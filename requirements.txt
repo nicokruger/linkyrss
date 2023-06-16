@@ -1,0 +1,6 @@
+langchain
+flask
+boto3
+openai
+serverless-wsgi
+bs4

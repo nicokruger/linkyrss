@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0">
+<channel>
+  <title>Linky Links</title>
+  <link>https://il2dtbh3cutlqnqvgzoyzva7qa0ohvix.lambda-url.eu-west-1.on.aws</link>
+  <description>My Linky Links</description>
+  {% for item in items %}
+  <item>
+    <title>{{ item.title | escape }}</title>
+    <link>{{ item.url | escape }}</link>
+    <description>{{ item.summary | escape }}</description>
+  </item>
+  {% endfor %}
+</channel>
+</rss>

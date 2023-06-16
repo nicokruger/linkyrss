@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="p-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {% for item in items %}
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl">
+            <div class="p-8">
+                <div class="tracking-wide text-sm text-indigo-500 font-semibold">{{ item.url }}</div>
+                <a href="{{ item.url }}" class="block mt-1 text-lg leading-tight font-medium text-black hover:underline">{{ item.title }}</a>
+                <p class="mt-2 text-gray-500">{{ item.summary }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
