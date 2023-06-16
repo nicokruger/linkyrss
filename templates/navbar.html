@@ -16,7 +16,8 @@
           <div class="flex space-x-4">
             <a href="{{ url_for('home') }}" class="{{ 'active' if request.endpoint == 'home' else '' }} text-gray-300 hover:bg-blue-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">New</a>
             <a href="{{ url_for('view') }}" class="{{ 'active' if request.endpoint == 'view' else '' }} text-gray-300 hover:bg-blue-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">View</a>
-            <a class="flex items-center text-gray-300" href="https://github.com/nicokruger/linkyrss" target="_blank">
+            <a href="{{ url_for('rss') }}" class="{{ 'active' if request.endpoint == 'rss' else '' }} text-gray-300 hover:bg-blue-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium">RSS</a>
+            <a class="px-3 flex items-center text-gray-300" href="https://github.com/nicokruger/linkyrss" target="_blank">
               <img src="{{ url_for('static', filename='github-mark-white.png') }}" alt="Github logo" class="w-6 h-6 mr-1">
               GitHub
             </a>
