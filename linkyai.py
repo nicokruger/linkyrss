@@ -21,7 +21,7 @@ default_request_headers.update({
 
 template = """Within the markdown block below is the full content of a website I am interested in. The url is {my_url} . For single page applications (SPAs), this may be empty or incomplete.
 
-```
+```html
 {requests_result}
 ```
 

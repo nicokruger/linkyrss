@@ -3,6 +3,7 @@ import werkzeug.exceptions
 from serverless_wsgi import handle_request
 import os
 import logging
+import urllib
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger('botocore').setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
@@ -36,7 +37,7 @@ def make_app():
     def extract_info():
         url = request.form.get('url')
 
-        data = linkyai.get_summary(url)
+        data = linkyai.get_summary("http://localhost:8081?url=" + url)
         logger.info(f"Extracted {data}")
 
         db.save_url(url, data['title'], data['summary'])
