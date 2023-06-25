@@ -1,12 +1,12 @@
 function remove_attr (x)
   if x.attr then
-    x.attr = pandoc.Attr()
+    --x.attr = pandoc.Attr()
   end
   if x.src then
     x.src = ""
   end
   if x.href then
-    x.href = ""
+    --x.href = ""
   end
   if x.target then
     --x.target = "cccccccc"
