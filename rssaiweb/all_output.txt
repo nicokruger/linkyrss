@@ -1,0 +1,110 @@
+I will create a Node.js Express app with the following core classes, functions, and methods:
+
+1. `app.js`: Entry point of the application, sets up the Express server and routes.
+2. `redisClient.js`: A module to create and export a Redis client instance.
+3. `articleController.js`: Contains the main logic for fetching articles and screenshots from Redis and rendering the article display page.
+4. `article.ejs`: An EJS template for rendering the article display page.
+
+Now, I will output the content of each file including all code.
+
+app.js
+```javascript
+const express = require('express');
+const app = express();
+const path = require('path');
+const articleController = require('./articleController');
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.get('/article/:index', articleController.getArticle);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+redisClient.js
+```javascript
+const redis = require('redis');
+const client = redis.createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+
+client.on('error', (err) => {
+  console.error('Redis error:', err);
+});
+
+module.exports = client;
+```
+
+articleController.js
+```javascript
+const redisClient = require('./redisClient');
+
+exports.getArticle = async (req, res) => {
+  try {
+    const index = parseInt(req.params.index, 10);
+    const urlKey = `page:${index}`;
+    const screenshotKey = `screenshot:${index}`;
+
+    const pageData = await redisClient.getAsync(urlKey);
+    const screenshotData = await redisClient.getAsync(screenshotKey);
+
+    if (!pageData || !screenshotData) {
+      return res.status(404).send('Page not found');
+    }
+
+    const article = JSON.parse(pageData);
+    const screenshot = `data:image/png;base64,${screenshotData.toString('base64')}`;
+
+    res.render('article', { article, screenshot });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+};
+```
+
+views/article.ejs
+```ejs
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= article.readableArticle.title %></title>
+</head>
+<body>
+  <h1><%= article.readableArticle.title %></h1>
+  <p><%= article.url %></p>
+  <img src="<%= screenshot %>" alt="Screenshot">
+  <div><%= article.readableArticle.content %></div>
+  <a href="/article/<%= parseInt(index) - 1 %>">Previous</a>
+  <a href="/article/<%= parseInt(index) + 1 %>">Next</a>
+</body>
+</html>
+```
+
+package.json
+```json
+{
+  "name": "article-display",
+  "version": "1.0.0",
+  "description": "Node.js Express app to display articles with URL, screenshot, and readable content",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "redis": "^3.1.2"
+  }
+}
+```
+
+To run the application, follow these steps:
+
+1. Install the dependencies with `npm install`.
+2. Start the server with `npm start`.
+3. Visit `http://localhost:3000/article/0` in your browser to view the first article. Use the next/previous buttons to navigate through the articles.

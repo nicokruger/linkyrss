@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <h1><%= article.url %></h1>
+  <h1><%= article.readableArticle.title %></h1>
+  <a href="/content/<%= parseInt(index) - 1 %>">Previous</a>
+  <a href="/content/<%= parseInt(index) + 1 %>">Next</a>
+  <pre>
+  <%- article.pandocCrawl.md5Contents %>
+  </pre>
+</body>
+</html>

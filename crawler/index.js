@@ -1,38 +1,65 @@
 const fs = require('fs');
-const { Crawler } = require('./crawler');
-const express = require('express');
-const app = express();
+const { Crawler, RedisCrawler } = require('./crawler');
+const redis = require('redis');
+const client = redis.createClient();
+const limit = require('p-limit')(4);
 
-async function crawl(url) {
+async function test_crawl(url) {
   const crawler = new Crawler(url);
-  await crawler.crawl();
-
-  await crawler.saveContentToFile();
-  await crawler.saveMediaToFile();
-
-  return crawler;
+  const page = await crawler.crawl();
+  return page;
 }
 
-app.get('/', async (req, res) => {
-  const url = req.query.url;
-  const crawler = await crawl(url);
-  res.send(crawler.readableArticle.content);
+async function crawl(url) {
+  const client = redis.createClient();
+  await client.connect();
+  const redisCrawler = new RedisCrawler(client);
+
+  await redisCrawler.crawl(url);
+
+}
+
+async function start() {
+  let processing = 0;
+  // subscribe to redis topic "crawl"
+  client.subscribe('crawl', async (message) => {
+    processing++;
+    console.log(`[${processing}] received message: ${message}`);
+    limit(async () => {
+      const url = message;
+      console.log('url', url);
+      await crawl(url);
+      console.log(`[${processing}/${limit.activeCount}] finished ${url}`);
+      processing--;
+    });
+  });
+
+  await client.connect();
+}
+
+start().then( () => {
+  console.log('started');
 });
 
-app.listen(8081, () => console.log('Listening on port 8081'));
 
-if (require.main === module) {
+
+
+
+if (false && require.main === module) {
   //const url = 'https://www.nytimes.com/2023/06/16/us/daniel-ellsberg-dead.html';
   //const url = 'https://lemmy.ninja/post/19617';
   //const url = 'https://www.inmytree.co.za'
   //const url = 'https://franklinetech.com/rss-feeds-benefits-and-how-to-use-them/';
-  const url = 'https://elektroelch.de/blog/wie-man-eine-anzahl-elemente-in-gleich-grosse-stuecke-aufteilt/';
-  crawl(url).then( (page) => {
+  const url = 'https://old.reddit.com/r/rss/comments/14b26vr/i_made_an_rss_based_ai_bookmarker/';
+  test_crawl(url).then( (page) => {
+    console.log('page', page);
     //console.log('content', page.content);
-    console.log('content', page.readableArticle.content);
-    fs.writeFileSync('content.html', page.readableArticle.content ?? '');
-    console.log('title', page.readableArticle.title);
+    //console.log('content', page.readableArticle.content);
+    //fs.writeFileSync('content.html', page.readableArticle.content ?? '');
+    //console.log('title', page.readableArticle.title);
     console.log('textContent', page.readableArticle.textContent);
-    console.log('media', page.media);
+    console.log('md5', page.pandocCrawl);
+    console.log('readable', page.pandocCrawl.readableArticle.textContent);
+    //console.log('media', page.media);
   });
 }

@@ -1,0 +1,14 @@
+{
+  "name": "article-display",
+  "version": "1.0.0",
+  "description": "Node.js Express app to display articles with URL, screenshot, and readable content",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "redis": "^4.6.7"
+  }
+}
