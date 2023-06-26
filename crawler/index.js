@@ -2,7 +2,7 @@ const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
 const redis = require('redis');
 const client = redis.createClient();
-const limit = require('p-limit')(4);
+const limit = require('p-limit')(1);
 
 async function test_crawl(url) {
   const crawler = new Crawler(url);
@@ -27,7 +27,7 @@ async function start() {
     console.log(`[${processing}] received message: ${message}`);
     limit(async () => {
       const url = message;
-      console.log('url', url);
+      console.log(`[${processing}/${limit.activeCount}] start ${url}`);
       await crawl(url);
       console.log(`[${processing}/${limit.activeCount}] finished ${url}`);
       processing--;

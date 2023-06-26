@@ -9,8 +9,6 @@
   <h1><%= article.readableArticle.title %></h1>
   <a href="/content/<%= parseInt(index) - 1 %>">Previous</a>
   <a href="/content/<%= parseInt(index) + 1 %>">Next</a>
-  <pre>
-  <%- article.pandocCrawl.md5Contents %>
-  </pre>
+  <%- article.pandocCrawl.readableArticle.content %>
 </body>
 </html>

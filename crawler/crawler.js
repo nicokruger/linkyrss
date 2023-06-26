@@ -136,7 +136,9 @@ class RedisCrawler {
       await this.storeCrawlState(url, 'DONE');
     } catch (e) {
       await this.storeCrawlState(url, 'ERROR');
-      console.error(e);
+      console.error('ERROR', e);
+      console.log('URL', url, 'HAD AN ERROR');
+      throw new Error('Z');
     }
   }
 
