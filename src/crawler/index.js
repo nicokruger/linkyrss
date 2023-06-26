@@ -1,7 +1,7 @@
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
 const redis = require('redis');
-const client = redis.createClient();
+const client = redis.createClient(process.env.REDIS_URL ?? 'redis://localhost:6379');
 const limit = require('p-limit')(1);
 
 async function test_crawl(url) {
