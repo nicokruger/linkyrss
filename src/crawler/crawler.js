@@ -23,6 +23,7 @@ class Crawler {
     await new Promise ( (resolve) => setTimeout(resolve, 2000));
 
     const content = await page.content();
+
     await this.extractMedia(page);
     const readableArticle = await this.extractReadableContent(content);
     const pandocCrawl = await this.extractPandoc(page, content);
@@ -75,11 +76,19 @@ class Crawler {
     });
   }
 
+  cleanUrlForFilename(url) {
+    const urlObj = new URL(url);
+    const urlPath = urlObj.pathname;
+    const urlPathParts = urlPath.split('/');
+    const urlFilename = urlPathParts[urlPathParts.length - 1];
+    return urlFilename;
+  }
+
   async extractPandoc(page) {
-    const tmpHtmlFilename = `${this.url.replace(/[:\/]/g, '_')}.tmp.html`;
+    const tmpHtmlFilename = `${this.cleanUrlForFilename(this.url)}.tmp.html`;
     const content = await page.content();
     await fs.writeFile(tmpHtmlFilename, content);
-    const tmpMdFilename = `${this.url.replace(/[:\/]/g, '_')}.tmp.md`;
+    const tmpMdFilename = `${this.cleanUrlForFilename(this.url)}.tmp.md`;
     await pandoc.pandocToMd('123123', tmpHtmlFilename, tmpMdFilename);
 
     let contents = await fs.readFile(tmpMdFilename);
@@ -128,17 +137,27 @@ class RedisCrawler {
 
   async crawl(url) {
     try {
+
+      const alreadyCrawled = await this.client.get(this.getCrawlKey(url));
+      if (alreadyCrawled === 'DONE') {
+        console.log('URL', url, 'ALREADY CRAWLED');
+        await this.publishCrawlResult(url);
+        return;
+      }
+
       await this.storeCrawlState(url, 'BUSY');
       const crawler = new Crawler(url);
       const page = await crawler.crawl();
 
       await this.savePage(page, url);
       await this.storeCrawlState(url, 'DONE');
+
+      await this.publishCrawlResult(url);
+
     } catch (e) {
       await this.storeCrawlState(url, 'ERROR');
       console.error('ERROR', e);
       console.log('URL', url, 'HAD AN ERROR');
-      throw new Error('Z');
     }
   }
 
@@ -169,6 +188,15 @@ class RedisCrawler {
   async storeCrawlState(url, state) {
     const key = this.getCrawlKey(url);
     await this.client.set(key, state);
+  }
+
+  async publishCrawlResult(url) {
+    //const page = await this.getPage(url);
+    //const screenshotKey = this.getScreenshotKey(url);
+    //const screenshot = await this.client.get(screenshotKey);
+    //await this.client.publish('crawled', JSON.stringify({url, page, screenshot}));
+    const pageKey = this.getPageKey(url);
+    await this.client.publish('crawled', pageKey);
   }
 
 

@@ -1,18 +1,16 @@
 {
-  "name": "refeed",
+  "name": "rss-atom-feed-processor",
   "version": "1.0.0",
-  "description": "",
+  "description": "A Node.js application that takes the URL of an RSS/Atom feed and stores each article into Redis, then creates a new Atom feed from the articles.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
     "feed": "^4.2.2",
     "feedparser": "^2.2.10",
-    "node-fetch": "^2.6.11",
-    "redis": "^4.6.7"
+    "feedparser-promised": "^2.0.1",
+    "redis": "^4.1.2"
   }
 }
