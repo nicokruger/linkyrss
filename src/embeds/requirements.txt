@@ -1,0 +1,4 @@
+redis
+langchain
+openai
+bs4

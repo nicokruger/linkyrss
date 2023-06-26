@@ -1,3 +1,0 @@
-https://www.w3.org/TR/activitypub
-https://github.com/newhouseb/clownfish
-https://github.com/TransformerOptimus/SuperAGI
