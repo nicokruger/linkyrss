@@ -1,18 +1,18 @@
+const Queue = require('idoit');
+
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
+const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const redis = require('redis');
-const client = redis.createClient(process.env.REDIS_URL ?? 'redis://localhost:6379');
-const limit = require('p-limit')(1);
-
-async function test_crawl(url) {
-  const crawler = new Crawler(url);
-  const page = await crawler.crawl();
-  return page;
-}
+const client = redis.createClient(redisUrl);
+const queue = new Queue({
+  redisURL: redisUrl,
+  concurrency:2,
+  ns: 'rssai2',
+  pool: 'rssai'
+});
 
 async function crawl(url) {
-  const client = redis.createClient();
-  await client.connect();
   const redisCrawler = new RedisCrawler(client);
 
   await redisCrawler.crawl(url);
@@ -20,26 +20,44 @@ async function crawl(url) {
 }
 
 async function start() {
-  let processing = 0;
-  // subscribe to redis topic "crawl"
-  client.subscribe('crawl', async (message) => {
-    processing++;
-    console.log(`[${processing}] received message: ${message}`);
-    limit(async () => {
-      const url = message;
-      console.log(`[${processing}/${limit.activeCount}] start ${url}`);
-      await crawl(url);
-      console.log(`[${processing}/${limit.activeCount}] finished ${url}`);
-      processing--;
-    });
-  });
-
   await client.connect();
 }
 
 start().then( () => {
   console.log('started');
 });
+
+module.exports.getQueues = async (client) => {
+  queue.registerTask('refeed', async ({article,index}) => {
+    console.log('ok');
+    await client.set(`article:${index}`, JSON.stringify(article));
+    console.log('ok2');
+
+    return article;
+  });
+  queue.registerTask('crawl', async (article) => {
+    console.log('crawl', article.link);
+    const url = article.link;
+    await crawl(url);
+    return article;
+  });
+
+  queue.on('error',  err => {   // Split task errors and internal errors
+    if (err instanceof Queue.Error) {
+      console.error(`Error in task "process" function: ${err}`);
+    } else {
+      console.error(`idoit internal error: ${err}`);
+    }
+  });
+
+  queue.options({concurreny: 2});
+  await queue.start();
+  queue.options({concurreny: 2});
+
+  return {q:queue};
+
+
+}
 
 
 

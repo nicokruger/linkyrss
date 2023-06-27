@@ -15,7 +15,7 @@ from langchain import PromptTemplate, LLMChain
 import logging
 logger = logging.getLogger(__name__)
 
-langchain.debug = True
+#langchain.debug = True
 
 template = """Within the block below is the full content of a page I am interested in. The url is {my_url}.
 
@@ -36,7 +36,7 @@ def get_llm_summary(chain, inputs):
         try:
             chain_output = chain(inputs)
             content = chain_output['text']
-            pprint.pprint(content)
+            #pprint.pprint(content)
             num_tries -= 1
         except Exception as e:
             num_tries -= 1
@@ -83,11 +83,13 @@ def test():
     logging.getLogger('openai').setLevel(logging.WARNING)
 
     for url in [x.strip() for x in open("urls.txt").readlines()]:
+        print(f"start summary: {url}")
         data = get_summary(url)
-        print("---------")
-        print(url)
-        pprint.pprint(data)
-        print("------------------")
+        print(f"end summary: {url}")
+        #print("---------")
+        #print(url)
+        #pprint.pprint(data)
+        #print("------------------")
 
 
 def event_handler(message):
@@ -102,7 +104,10 @@ def event_handler(message):
 
         readable = page['pandocCrawl']['readableArticle']['textContent']
         #readable = page['pandocCrawl']['readableArticle']['content']
-        summary = summarise_url(page['url'], readable)
+        url = page['url']
+        print(f"start summary: {url}")
+        summary = summarise_url(url, readable)
+        print(f"end summary: {url}")
 
         #pprint.pprint(summary)
 

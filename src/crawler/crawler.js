@@ -31,6 +31,8 @@ class Crawler {
     const screenshotFilename = await this.takeScreenshot(page);
     const screenshot = await fs.readFile(screenshotFilename);
 
+    await fs.unlink(screenshotFilename);
+
     await browser.close();
 
     return {
@@ -81,7 +83,10 @@ class Crawler {
     const urlPath = urlObj.pathname;
     const urlPathParts = urlPath.split('/');
     const urlFilename = urlPathParts[urlPathParts.length - 1];
-    return urlFilename;
+    if (urlFilename === '') {
+      return 'slashslashslashindexb';
+    }
+    return urlFilename
   }
 
   async extractPandoc(page) {
@@ -158,6 +163,7 @@ class RedisCrawler {
       await this.storeCrawlState(url, 'ERROR');
       console.error('ERROR', e);
       console.log('URL', url, 'HAD AN ERROR');
+      throw e;
     }
   }
 
