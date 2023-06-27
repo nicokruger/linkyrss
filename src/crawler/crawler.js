@@ -145,9 +145,13 @@ class RedisCrawler {
 
       const alreadyCrawled = await this.client.get(this.getCrawlKey(url));
       if (alreadyCrawled === 'DONE') {
-        console.log('URL', url, 'ALREADY CRAWLED');
+        //console.log('URL', url, 'ALREADY CRAWLED');
+
         await this.publishCrawlResult(url);
-        return;
+
+        const key = this.getPageKey(url);
+        const page = await this.client.get(key);
+        return JSON.parse(page);
       }
 
       await this.storeCrawlState(url, 'BUSY');
@@ -158,6 +162,8 @@ class RedisCrawler {
       await this.storeCrawlState(url, 'DONE');
 
       await this.publishCrawlResult(url);
+
+      return page;
 
     } catch (e) {
       await this.storeCrawlState(url, 'ERROR');

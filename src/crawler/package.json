@@ -16,6 +16,7 @@
     "feedparser-promised": "^2.0.1",
     "idoit": "^4.0.0",
     "jsdom": "^22.1.0",
+    "langchain": "^0.0.97",
     "p-limit": "^2.3.0",
     "puppeteer": "^20.7.2",
     "redis": "^4.6.7"

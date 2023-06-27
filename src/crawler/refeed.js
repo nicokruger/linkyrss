@@ -7,32 +7,35 @@ const app = express();
 const index = require('./index.js');
 
 // Function to parse the given RSS/Atom feed URL, store the latest n articles in Redis, and create a new Atom feed from the stored articles.
-async function parseAndStoreFeed(url, n = 100) {
+async function parseAndStoreFeed(queues, url, n = 100) {
   try {
     const articles = await feedparser.parse(url);
     const latestArticles = articles.slice(0, n);
 
     const children = [];
-    const {q,wq} = await index.getQueues(client);
+    const {q,wq} = queues;
 
     const queue = q;
-    console.log('wtf');
-    //await q.crawl({article:{},index:1}).run();
-    console.log('wtf2');
     latestArticles.forEach( async (article, index) => {
 
-      children.push(queue.chain([
+      console.log('add article', index);
+
+      const chain = queue.chain([
         queue.refeed({article, index}),
-        queue.crawl()
-      ]).options({pool:'rssai'}));
-        console.log('add article', index);
+        queue.crawl(),
+        queue.summary()
+      ]);
+      children.push(chain);
 
     });
 
     //for (const c of children) {
     //  c.run();
     //}
-    queue.group(children).run();
+    const id = await queue.group(children).run();
+    console.log('id', id);
+
+    await client.set(`jobid:${id}`, url);
 
     //const newFeedUrl = 'http://localhost:3000';
     //const newFeed = createNewFeed(newFeedUrl, latestArticles);
@@ -111,8 +114,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   await client.connect();
   console.log(`Listening on port ${PORT}`);
+  const queues = await index.getQueues(client);
+  parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
 
-// Example usage
-parseAndStoreFeed('https://ttrss.inmytree.co.za/tt-rss/public.php?op=rss&id=18&is_cat=0&q=&key=7uy6vl649a73ba2a043').catch(console.log);
+
