@@ -19,6 +19,7 @@
     "langchain": "^0.0.97",
     "p-limit": "^2.3.0",
     "puppeteer": "^20.7.2",
-    "redis": "^4.6.7"
+    "redis": "^4.6.7",
+    "winston": "^3.9.0"
   }
 }

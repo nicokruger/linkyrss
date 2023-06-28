@@ -1,10 +1,13 @@
 const feedparser = require('feedparser-promised');
 const { Feed, Category } = require('feed');
 const redis = require('redis');
-const client = redis.createClient();
+const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const client = redis.createClient({url:redisUrl});
 const express = require('express');
 const app = express();
 const index = require('./index.js');
+const createLogger = require('./logger');
+const logger = createLogger(module);
 
 const configFile = process.argv[2];
 if (!configFile) {
@@ -36,7 +39,7 @@ async function parseAndStoreFeed(queues, feed, n = 100) {
         await client.set(`feed:${name}`, JSON.stringify(feedData));
       }
 
-      console.log('add article', article.link);
+      logger.info('add article', article.link);
 
       const chain = queue.chain([
         queue.refeed({name, article, index}),
@@ -77,7 +80,7 @@ function createNewFeed(meta, feedUrl, articles) {
   articles.forEach((article) => {
     feed.addItem({
       title: article.title,
-      id: article.guid,
+      id: article.guid + 'refeedy',
       link: article.link,
       description: article.description,
       content: article.content,
@@ -150,12 +153,16 @@ app.get('/', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
   await client.connect();
-  console.log(`Listening on port ${PORT}`);
+  logger.info(`Listening on port ${PORT}`);
   const queues = await index.getQueues(client);
 
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
-  for (const feed of config.feeds) {
-    //parseAndStoreFeed(queues, feed).catch(console.log);
+  const scheduleTimeSeconds = 60 * 60;
+  while (true) {
+    for (const feed of config.feeds) {
+      parseAndStoreFeed(queues, feed).catch(logger.info);
+    }
+    await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });

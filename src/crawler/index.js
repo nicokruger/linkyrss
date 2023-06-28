@@ -3,14 +3,16 @@ const Queue = require('idoit');
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
 const summarise = require('./summarise.js');
-const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const redis = require('redis');
-const client = redis.createClient(redisUrl);
+const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
+const client = redis.createClient({url:redisUrl});
 const queue = new Queue({
   redisURL: redisUrl,
   concurrency:4,
   ns: 'rssai6'
 });
+const createLogger = require('./logger');
+const logger = createLogger(module);
 
 async function crawl(url) {
   const redisCrawler = new RedisCrawler(client);
@@ -25,7 +27,7 @@ async function start() {
 }
 
 start().then( () => {
-  console.log('started');
+  logger.info('started');
 });
 
 module.exports.getQueues = async (client) => {
@@ -38,11 +40,11 @@ module.exports.getQueues = async (client) => {
     if (jobUrl) {
       const percent = data.progress / data.total * 100;
       const last50Chars = jobUrl.slice(-50);
-      console.log(`[${last50Chars}] ${percent.toFixed(2)}%`);
+      logger.info(`[${last50Chars}] ${percent.toFixed(2)}%`);
     } else {
       jobUrl = await client.get(`jobid:${data.uid}`);
       if (jobUrl) {
-        console.log('task progress2', data.progress/ data.total);
+        logger.info('task progress2', data.progress/ data.total);
       } else {
       //console.log('cannot find', jobIdKey, data.id, data.uid);
       }
@@ -73,9 +75,9 @@ module.exports.getQueues = async (client) => {
 
   queue.on('error',  err => {   // Split task errors and internal errors
     if (err instanceof Queue.Error) {
-      console.error(`Error in task "process" function: ${err}`);
+      logger.error(`Error in task "process" function: ${err}`);
     } else {
-      console.error(`idoit internal error: ${err}`);
+      logger.error(`idoit internal error: ${err}`);
     }
   });
 
@@ -96,14 +98,14 @@ if (false && require.main === module) {
   //const url = 'https://franklinetech.com/rss-feeds-benefits-and-how-to-use-them/';
   const url = 'https://old.reddit.com/r/rss/comments/14b26vr/i_made_an_rss_based_ai_bookmarker/';
   test_crawl(url).then( (page) => {
-    console.log('page', page);
+    logger.info('page', page);
     //console.log('content', page.content);
     //console.log('content', page.readableArticle.content);
     //fs.writeFileSync('content.html', page.readableArticle.content ?? '');
     //console.log('title', page.readableArticle.title);
-    console.log('textContent', page.readableArticle.textContent);
-    console.log('md5', page.pandocCrawl);
-    console.log('readable', page.pandocCrawl.readableArticle.textContent);
+    //console.log('textContent', page.readableArticle.textContent);
+//    console.log('md5', page.pandocCrawl);
+    //console.log('readable', page.pandocCrawl.readableArticle.textContent);
     //console.log('media', page.media);
   });
 }

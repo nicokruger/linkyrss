@@ -1,5 +1,7 @@
 const fs = require('fs');
 const childProcess = require('child_process');
+const createLogger = require('./logger');
+const logger = createLogger(module);
 
 async function pandocToMd(id, htmlFile, mdFile) {
   const pandocCommand = `pandoc --columns 120 ${htmlFile} -t gfm-raw_html -s --wrap none --strip-comments --lua-filter=remove-attr.lua`;
@@ -19,14 +21,14 @@ async function pandocToMd(id, htmlFile, mdFile) {
       if (code === 0) {
         resolve(stdout);
       } else {
-        console.error('pandoc failed', code, signal);
+        logger.error('pandoc failed', code, signal);
 
-        console.warn(`pandoc process exited with code ${code}`);
-        console.warn('======= stdout =====');
-        console.warn(stdout.slice(0,100));
-        console.warn('======= stderr =====');
-        console.warn(stderr);
-        console.warn(`pandoc process exited with code ${code}`);
+        logger.warn(`pandoc process exited with code ${code}`);
+        logger.warn('======= stdout =====');
+        logger.warn(stdout.slice(0,100));
+        logger.warn('======= stderr =====');
+        logger.warn(stderr);
+        logger.warn(`pandoc process exited with code ${code}`);
 
         reject(new Error(`pandoc process exited with code ${code} and signal ${signal}`));
       }
@@ -38,7 +40,7 @@ async function pandocToMd(id, htmlFile, mdFile) {
 
 async function pandocToHtml(mdFile, htmlFile) {
   const pandocCommand = `pandoc --columns 120 ${mdFile} -t html -s --wrap none --strip-comments`;
-  console.log(`running pandoc command: ${pandocCommand}`);
+  logger.debug(`running pandoc command: ${pandocCommand}`);
   const pandoc = childProcess.exec(pandocCommand);
   const pandocStdout = await new Promise((resolve, reject) => {
     let stderr = '';
@@ -54,14 +56,14 @@ async function pandocToHtml(mdFile, htmlFile) {
       if (code === 0) {
         resolve(stdout);
       } else {
-        console.error('pandoc failed', code, signal);
+        logger.error('pandoc failed', code, signal);
 
-        console.warn(`pandoc process exited with code ${code}`);
-        console.warn('======= stdout =====');
-        console.warn(stdout.slice(0,100));
-        console.warn('======= stderr =====');
-        console.warn(stderr);
-        console.warn(`pandoc process exited with code ${code}`);
+        logger.warn(`pandoc process exited with code ${code}`);
+        logger.warn('======= stdout =====');
+        logger.warn(stdout.slice(0,100));
+        logger.warn('======= stderr =====');
+        logger.warn(stderr);
+        logger.warn(`pandoc process exited with code ${code}`);
 
         reject(new Error(`pandoc process exited with code ${code} and signal ${signal}`));
       }
