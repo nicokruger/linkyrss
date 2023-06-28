@@ -50,8 +50,8 @@ module.exports.getQueues = async (client) => {
     }
   });
 
-  queue.registerTask('refeed', async ({article,index}) => {
-    await client.set(`article:${index}`, JSON.stringify(article));
+  queue.registerTask('refeed', async ({name, article,index}) => {
+    await client.set(`article:${name}:${index}`, JSON.stringify(article));
 
     return article;
   });
@@ -82,7 +82,6 @@ module.exports.getQueues = async (client) => {
   await queue.start();
 
   return {q:queue};
-
 
 }
 

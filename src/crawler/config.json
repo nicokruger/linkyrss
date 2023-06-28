@@ -1,0 +1,8 @@
+{
+  "feeds":[
+    {
+      "name":"Lobsters - Newest Stories",
+      "url":"https://lobste.rs/newest.rss"
+    }
+  ]
+}

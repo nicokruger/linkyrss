@@ -6,22 +6,40 @@ const express = require('express');
 const app = express();
 const index = require('./index.js');
 
+const configFile = process.argv[2];
+if (!configFile) {
+  console.error('Please specify a config file');
+  process.exit(1);
+}
 // Function to parse the given RSS/Atom feed URL, store the latest n articles in Redis, and create a new Atom feed from the stored articles.
-async function parseAndStoreFeed(queues, url, n = 100) {
+async function parseAndStoreFeed(queues, feed, n = 100) {
+  const {url,name} = feed;
   try {
-    const articles = await feedparser.parse(url);
-    const latestArticles = articles.slice(0, n);
+    const articles = await feedparser.parse(url, {
+      addmeta: true,
+    });
 
+    const latestArticles = articles.slice(0, n);
     const children = [];
-    const {q,wq} = queues;
+    const {q} = queues;
 
     const queue = q;
+
+
     latestArticles.forEach( async (article, index) => {
 
-      console.log('add article', index);
+      if (index === 0) {
+        const feedData = {
+          meta: article.meta,
+          ...feed,
+        }
+        await client.set(`feed:${name}`, JSON.stringify(feedData));
+      }
+
+      console.log('add article', article.link);
 
       const chain = queue.chain([
-        queue.refeed({article, index}),
+        queue.refeed({name, article, index}),
         queue.crawl(),
         queue.summary()
       ]);
@@ -33,7 +51,6 @@ async function parseAndStoreFeed(queues, url, n = 100) {
     //  c.run();
     //}
     const id = await queue.group(children).run();
-    console.log('id', id);
 
     await client.set(`jobid:${id}`, url);
 
@@ -47,10 +64,10 @@ async function parseAndStoreFeed(queues, url, n = 100) {
 }
 
 // Function to create a new Atom feed from the given articles.
-function createNewFeed(feedUrl, articles) {
+function createNewFeed(meta, feedUrl, articles) {
   const feed = new Feed({
-    title: 'New Atom Feed',
-    description: 'A new Atom feed created from the latest articles of the original feed.',
+    title: '[Refeed] ' + meta.title,
+    description: meta.description ?? "Refeed for " + meta.title,
     id: feedUrl,
     link: feedUrl,
     updated: new Date(),
@@ -64,7 +81,7 @@ function createNewFeed(feedUrl, articles) {
       link: article.link,
       description: article.description,
       content: article.content,
-      author: article.author,
+      //author: article['atom:author'] ?? article.author,
       date: new Date(article.pubDate),
       category: [
         {
@@ -82,11 +99,9 @@ function createNewFeed(feedUrl, articles) {
   return feed;
 }
 
-app.get('/', async (req, res) => {
-
-  const newFeedUrl = 'http://localhost:3000';
-  const latestArticlesKeys = await client.keys('article:*');
-  const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key) => {
+async function getFeed(name) {
+  const latestArticlesKeys = await client.keys(`article:${name}:*`);
+  const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key, index) => {
     const article = JSON.parse(await client.get(key));
     const summaryKey = `summary:${article.link}`;
     const summary = JSON.parse(await client.get(summaryKey));
@@ -95,19 +110,41 @@ app.get('/', async (req, res) => {
       //article.content = newContent;
       //article.summary = `<![CDATA[${summary.summary}<br/><br/>${article.summary}]]>`;
       //article.summary = "cheese";
-      console.log(article.summary);
-      article.content = summary.summary + "<br/><br/>" + article.summary;
+      const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
+      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
       return article;
     } else {
       return null;
     }
   }))).filter( article => article !== null);
-  const newFeed = createNewFeed(newFeedUrl, latestArticles);
-  const atomXml = newFeed.atom1();
+  return latestArticles;
+}
 
+
+app.get('/feed/:name', async (req, res) => {
+  const newFeedUrl = req.url;
+  const key = `feed:${req.params.name}`;
+  if (!await client.exists(key)) {
+    res.status(404).send('Feed not found');
+    return;
+  }
+
+  const feedInfo = JSON.parse(await client.get(key));
+  const feedArticles = await getFeed(req.params.name);
+  const newFeed = createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
+  const atomXml = newFeed.atom1();
 
   res.header('Content-Type', 'application/atom+xml');
   res.send(atomXml);
+});
+
+app.get('/', async (req, res) => {
+  const feedKeys = await client.keys('feed:*');
+  const feeds = await Promise.all(feedKeys.map( async (key) => {
+    const feed = JSON.parse(await client.get(key));
+    return feed;
+  }));
+  res.end(JSON.stringify(feeds,null,2));
 });
 
 const PORT = process.env.PORT || 3000;
@@ -115,7 +152,12 @@ app.listen(PORT, async () => {
   await client.connect();
   console.log(`Listening on port ${PORT}`);
   const queues = await index.getQueues(client);
-  parseAndStoreFeed(queues, '<url>').catch(console.log);
+
+  const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
+  for (const feed of config.feeds) {
+    //parseAndStoreFeed(queues, feed).catch(console.log);
+  }
+  //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
 
