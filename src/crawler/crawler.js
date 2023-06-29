@@ -3,6 +3,8 @@ const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
 const { JSDOM } = require('jsdom');
 const pandoc = require('./pandoc.js');
+const createLogger = require('./logger');
+const logger = createLogger(module);
 
 class Crawler {
   constructor(url) {
@@ -17,9 +19,10 @@ class Crawler {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0');
 
     await page.goto(this.url, {
-      waitUntil: 'networkidle2',
+      waitUntil: 'load',
       timeout: 60000
     });
+    await this.waitTillHTMLRendered(page);
     await new Promise ( (resolve) => setTimeout(resolve, 2000));
 
     const content = await page.content();
@@ -44,6 +47,37 @@ class Crawler {
       screenshot,
     };
 
+  }
+
+  async waitTillHTMLRendered(page, timeout = 60000) {
+    const checkDurationMsecs = 1000;
+    const maxChecks = timeout / checkDurationMsecs;
+    let lastHTMLSize = 0;
+    let checkCounts = 1;
+    let countStableSizeIterations = 0;
+    const minStableSizeIterations = 3;
+
+    while(checkCounts++ <= maxChecks){
+      let html = await page.content();
+      let currentHTMLSize = html.length; 
+
+      let bodyHTMLSize = await page.evaluate(() => document.body.innerHTML.length);
+
+      logger.debug('last: ', lastHTMLSize, ' <> curr: ', currentHTMLSize, " body html size: ", bodyHTMLSize);
+
+      if(lastHTMLSize != 0 && currentHTMLSize == lastHTMLSize) 
+        countStableSizeIterations++;
+      else 
+        countStableSizeIterations = 0; //reset the counter
+
+      if(countStableSizeIterations >= minStableSizeIterations) {
+        logger.debug("Page rendered fully..");
+        break;
+      }
+
+      lastHTMLSize = currentHTMLSize;
+      await page.waitForTimeout(checkDurationMsecs);
+    }  
   }
 
   async takeScreenshot(page) {
@@ -167,8 +201,8 @@ class RedisCrawler {
 
     } catch (e) {
       await this.storeCrawlState(url, 'ERROR');
-      console.error('ERROR', e);
-      console.log('URL', url, 'HAD AN ERROR');
+      logger.error('URL', url, 'HAD AN ERROR');
+      logger.error('ERROR', e);
       throw e;
     }
   }
@@ -214,4 +248,16 @@ class RedisCrawler {
 
 }
 
+if (require.main === module) {
+  (async function () {
+    const url = process.argv[2];
+    if (!url) {
+      console.error('URL required');
+      process.exit(1);
+    }
+    const crawler = new Crawler(url);
+    const page = await crawler.crawl();
+    console.log(page);
+  })().then(console.log);
+}
 module.exports = { RedisCrawler, Crawler };
