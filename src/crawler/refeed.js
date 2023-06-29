@@ -7,6 +7,7 @@ const express = require('express');
 const app = express();
 const index = require('./index.js');
 const summary = require('./summarise.js');
+const feeds = require('./feeds.js');
 const createLogger = require('./logger');
 const logger = createLogger(module);
 
@@ -88,6 +89,7 @@ function createNewFeed(meta, feedUrl, articles) {
   });
 
   articles.forEach((article) => {
+    console.log('wtf', article);
     feed.addItem({
       title: article.title,
       id: article.guid + 'refeedy',
@@ -125,6 +127,8 @@ async function getFeed(name) {
       //article.summary = "cheese";
       const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
       article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
+      return article;
+    } else if (article.isSummary) {
       return article;
     } else {
       return null;
@@ -169,7 +173,15 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 60 * 60;
 
-  summary.summariseFeeds(client, config.feeds);
+  const feedwriter = new feeds.FeedWriter('Test', client, queues);
+  summary.summariseFeeds(feedwriter, client, config.feeds);
+  feedwriter.writeFeedMeta({
+    summary:true,
+    meta:{
+      title:'Test',
+      description:'Test',
+    }
+  });
 
   /*
   while (true) {

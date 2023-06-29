@@ -57,7 +57,31 @@ async function get_llm_summary(chain, inputs) {
   return content.trim();
 }
 
-async function get_llm_raw(system, in_template, examples, inputs) {
+async function group_or_regroup_article(articles, groups, {article_url, group_name}) {
+  console.log('group_or_regroup_article', article_url, group_name);
+  // find article by url / link
+  //console.log('articles', articles.slice(0,3));
+  const article = articles.find( (a) => a.article.link == article_url);
+  //console.log('article', article);
+  if (!article) {
+    throw new Error('whoops');
+  }
+  if (!groups[group_name]) {
+    groups[group_name] = [];
+  }
+  // check if the item exists anywhere else and remove it
+  for (const group in groups) {
+    const index = groups[group].findIndex( (a) => a.article.link == article_url);
+    if (index > -1) {
+      groups[group].splice(index, 1);
+    }
+  }
+  groups[group_name].push(article);
+  
+
+  return `Added ${article.link} article to group ${group_name}`;
+}
+async function get_llm_raw(article_groups, allArticles, system, in_template, examples, inputs) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
@@ -96,32 +120,86 @@ async function get_llm_raw(system, in_template, examples, inputs) {
   messages.push({role: "user", content: prompt});
 
 
-  while ((finish_reason === 'length') || ((!content.trim() || content == "") && num_tries > 0)) {
+  while ((!finish_reason || finish_reason === 'function_call')) {
     try {
       //console.log('send msges', messages);
       const chatCompletion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo-16k",
+        //model: "gpt-3.5-turbo-0613",
         messages,
+        functions: [{
+          name: "group_or_regroup_article",
+          description: "Puts or moves an article into a specific group",
+          parameters: {
+            type: "object",
+            properties: {
+              article_url: {
+                type: "string",
+                description: "The url of the article to group or regroup",
+              },
+              group_name: {
+                type: "string",
+                description: "The name of the group to put or move the article in. Group will be created if it doesn't exist",
+              }
+            },
+            required: ["article_url", "group_name"],
+          }
+        }],
+        function_call: "auto"
       });
-
-      //console.log(chatCompletion.data);
       const firstChoice = chatCompletion.data.choices[0];
-      //console.log('firstChoice', firstChoice);
-      const assistant = firstChoice.message.content;
+      const response_message = firstChoice.message;
+      const assistant = response_message.content;
+      content = assistant ?? 'flezbar';
       finish_reason = firstChoice.finish_reason;
+      if (response_message.function_call) {
+          const available_functions = {
+              'group_or_regroup_article': group_or_regroup_article.bind(null, allArticles, article_groups)
+          };
+          const function_name = response_message.function_call.name;
+          const function_to_call = available_functions[function_name];
+          const function_args = JSON.parse(response_message.function_call.arguments);
 
-      //console.log('finish_reason', finish_reason);
-      //console.log('assistant', assistant);
+          const function_response = await function_to_call({
+              article_url: function_args.article_url,
+              group_name: function_args.group_name,
+          })
+          messages.push(response_message);
+          messages.push({
+              role: 'function',
+              name: function_name,
+              content: function_response,
+          });
+        
+          content = '';
+        console.log('pls continue', finish_reason);
 
-      content = assistant;
+
+        /*
+              openai.ChatCompletion.create({
+                  model: 'gpt-3.5-turbo-0613',
+                  messages: messages,
+              }).then((second_response) => {
+                  // Do something with the second response
+              });
+              */
+      } else {
+        //console.log(chatCompletion.data);
+
+        //console.log('finish_reason', finish_reason);
+        //console.log('assistant', assistant);
 
 
-      if (finish_reason === 'length') {
-        messages.push({role: 'assistant', content: assistant});
-        messages.push({role: "user", content: 'continue'});
-      }
+
+        if (finish_reason === 'length') {
+          messages.push({role: 'assistant', content: assistant});
+          messages.push({role: "user", content: 'continue'});
+        }
       //throw new Error("stop");
+      }
+
     } catch (e) {
+      logger.error('openai error', e);
       if (e.response?.data) {
         console.error(e.response.data);
       } else {
@@ -129,6 +207,7 @@ async function get_llm_raw(system, in_template, examples, inputs) {
       }
       num_tries -= 1;
       last_error = e;
+      logger.info(`[get_llm_raw] sleeping for ${sleep} seconds`);
       await new Promise(r => setTimeout(r, sleep * 1000));
       sleep *= 1.1;
     }
@@ -167,7 +246,17 @@ async function summarise_url(url, content) {
   return data;
 }
 
-async function summariseFeeds(client, feedsdata) {
+async function prepareNewArticle(group, articles) {
+  let content = '';
+  content = '## ' + group + '\n\n';
+  for (const article of articles) {
+    content += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
+  }
+  return content;
+
+
+};
+async function summariseFeeds(feedwriter, client, feedsdata) {
   /*
   const template = `I am interested in technology, games, and music. Given the following article summaries from the last 24 hours as seperate markdown blocs:
 
@@ -175,7 +264,7 @@ async function summariseFeeds(client, feedsdata) {
 
 You are a News expert, researcher and blogger. What are the trends and topics discussed in these articles? Provide a markdown output block with each trend or topic as a heading and a short sentence describing the subject matter and titles of posts discussing it. `
 */
-  const template = `I have too many unread articles in my RSS fead. It is impossible for me to keep up. I need your help to group the folowing articles together using heuristics around similairity, category and so forth:
+  const template = `I have too many unread articles in my RSS fead. It is impossible for me to keep up. I need your help to group the folowing articles together using heuristics around similairity, category, topics, trends and so forth:
 
 # Posts from my RSS feeds
 {markdowns}
@@ -183,7 +272,7 @@ You are a News expert, researcher and blogger. What are the trends and topics di
 # Candiate New Grouped Posts by Trend/Category
 {new_posts}
 
-Provide the markdown containing new candidate posts as markdown, grouped related articles together under appropriate headings. You may change existing headings if new information arrives:`;
+Provide the markdown containing new candidate posts as markdown, grouped related articles together under appropriate categories/trends. You may change existing headings if new information arrives:`;
 
   const system = "";
   //const system = "The user is going to provide a list of markdown article summaries. You are CmdrTaco, the editor of slashdot. you know when slasdhot summaries multiple related articles? You're doing that.";
@@ -216,24 +305,22 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 
   const allArticles = [];
   for (const feed of feedsdata) {
-    console.log('feed', feed);
+    //console.log('feed', feed);
     const feedArticles = await feeds.getFeedArticles(client, feed.name);
 
     allArticles.push(...feedArticles);
 
-    markdowns += `## ${feed.name}\n\n`;
-    markdowns += feedArticles.slice(0,18).map(({summary,article}) => {
-      return `### ${article.title}\n\n${summary.summary}\n\n`;
-    }
-    ).join('\n\n');
   }
 
+  console.log('total articles', allArticles.length);
   const chunkedArticles = _.chunk(allArticles, 3);
+  let article_groups = {};
   for (const chunk of chunkedArticles) {
+    console.log('chunk', chunk.length);
     markdowns = '';
     //markdowns += `## ${feed.name}\n\n`;
     markdowns += chunk.map(({summary,article}) => {
-      return `### ${article.title}\n\n${summary.summary}\n\n`;
+      return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
     }
     ).join('\n\n');
 
@@ -243,11 +330,34 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       new_posts
     }
 
-    const output = await get_llm_raw(system, template, examples, inputs);
-    new_posts += output;
+    console.log('start');
+    const output = await get_llm_raw(
+      article_groups,
+      allArticles,
+      system,
+      template,
+      examples,
+      inputs);
+    console.log('article_groups', article_groups);
 
-    console.log('=========================');
-    console.log('output', output);
+    new_posts = '';
+    let idx = 0;
+    for (const group of Object.keys(article_groups)) {
+      new_posts += `## ${group}\n\n`;
+      for (const article of article_groups[group]) {
+        //new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
+        new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
+      }
+
+      const newArticle = await prepareNewArticle(group, article_groups[group]);
+      await feedwriter.writeArticle(idx, group, group, newArticle);
+
+      idx += 1;
+
+    }
+    console.log('new_posts', new_posts);
+    //new_posts += output;
+
 
 
 
