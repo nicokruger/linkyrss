@@ -41,6 +41,13 @@ async function parseAndStoreFeed(queues, feed, n = 100) {
 
       logger.info('add article', article.link);
 
+      if (article.link === undefined
+          || article.link === null
+          || article.link === '') {
+        logger.error(feed.name, 'article has no link', article);
+        return;
+      }
+
       const chain = queue.chain([
         queue.refeed({name, article, index}),
         queue.crawl(),
