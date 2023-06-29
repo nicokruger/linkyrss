@@ -9,11 +9,11 @@ const client = redis.createClient({url:redisUrl});
 const queue = new Queue({
   redisURL: redisUrl,
   concurrency:4,
-  ns: 'rssai6'
+  ns: 'rssai7'
 });
 const createLogger = require('./logger');
-const database = require('./database.js');
 const logger = createLogger(module);
+const database = require('./database.js');
 
 async function crawl(db, url) {
   if (!db) throw new Error('db required');
