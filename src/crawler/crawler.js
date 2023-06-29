@@ -28,6 +28,7 @@ class Crawler {
     const content = await page.content();
 
     await this.extractMedia(page);
+    const links = await this.extractLinks(page);
     const readableArticle = await this.extractReadableContent(content);
     const pandocCrawl = await this.extractPandoc(page, content);
 
@@ -45,6 +46,7 @@ class Crawler {
       readableArticle,
       pandocCrawl,
       screenshot,
+      links
     };
 
   }
@@ -55,7 +57,7 @@ class Crawler {
     let lastHTMLSize = 0;
     let checkCounts = 1;
     let countStableSizeIterations = 0;
-    const minStableSizeIterations = 3;
+    const minStableSizeIterations = 5;
 
     while(checkCounts++ <= maxChecks){
       let html = await page.content();
@@ -84,6 +86,31 @@ class Crawler {
     const screenshotFileName = `${this.url.replace(/[:\/]/g, '_')}.screenshot.png`;
     await page.screenshot({path:screenshotFileName});
     return screenshotFileName;
+  }
+
+  async extractLinks(page) {
+    const hrefs = [...(await page
+      .$$eval('a', as => as.filter(a => !!a.href)
+      .map( (a) => { return {
+        href:a.href,
+        content:a.textContent
+      }}) 
+      ))]
+    .reduce((map, obj) => {
+      if (!map[obj.href]) map[obj.href] = [];
+      map[obj.href].push(obj.content);
+      map[obj.href] = [...new Set(map[obj.href])];
+      map[obj.href] = map[obj.href].filter((x) => x !== '');
+      return map;
+    }, {});
+
+    const byhref = Object.keys(hrefs).map((href) => {
+      return {
+        href,
+        content: hrefs[href]
+      }
+    });
+    return byhref;
   }
 
   async extractMedia(page) {
