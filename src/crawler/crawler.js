@@ -1,3 +1,4 @@
+const os = require('os');
 const Readability = require('@mozilla/readability').Readability;
 const puppeteer = require('puppeteer');
 const fs = require('fs').promises;
@@ -18,18 +19,21 @@ class Crawler {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0');
 
+    logger.debug(`[${this.url}] start puppeteer`);
     await page.goto(this.url, {
       waitUntil: 'load',
       timeout: 60000
     });
     await this.waitTillHTMLRendered(page);
-    await new Promise ( (resolve) => setTimeout(resolve, 2000));
+    logger.debug(`[${this.url}] html ready`);
 
     const content = await page.content();
 
     await this.extractMedia(page);
     const links = await this.extractLinks(page);
+    logger.debug(`[${this.url}] get readable content`);
     const readableArticle = await this.extractReadableContent(content);
+    logger.debug(`[${this.url}] get pandoc content`);
     const pandocCrawl = await this.extractPandoc(page, content);
 
     const screenshotFilename = await this.takeScreenshot(page);
@@ -38,6 +42,8 @@ class Crawler {
     await fs.unlink(screenshotFilename);
 
     await browser.close();
+
+    logger.debug(`[${this.url}] done`);
 
     return {
       url: this.url,
@@ -140,14 +146,11 @@ class Crawler {
   }
 
   cleanUrlForFilename(url) {
-    const urlObj = new URL(url);
-    const urlPath = urlObj.pathname;
-    const urlPathParts = urlPath.split('/');
-    const urlFilename = urlPathParts[urlPathParts.length - 1];
-    if (urlFilename === '') {
-      return 'slashslashslashindexb';
-    }
-    return urlFilename
+    // base64 encode the url
+    // replace all non-alphanumeric characters with _
+    const salt = new Date().getTime();
+    const urlFilename = Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '_');
+    return os.tmpdir() + '/' + urlFilename + '_' + salt;
   }
 
   async extractPandoc(page) {
@@ -155,14 +158,17 @@ class Crawler {
     const content = await page.content();
     await fs.writeFile(tmpHtmlFilename, content);
     const tmpMdFilename = `${this.cleanUrlForFilename(this.url)}.tmp.md`;
+    logger.debug(`[${this.url}] pandoc html -> md`);
     await pandoc.pandocToMd('123123', tmpHtmlFilename, tmpMdFilename);
 
     let contents = await fs.readFile(tmpMdFilename);
     contents = contents.toString().replace(/^:::.*$/gm, '');
     await fs.writeFile(tmpMdFilename, contents);
 
+    logger.debug(`[${this.url}] pandoc md -> html`);
     await pandoc.pandocToHtml(tmpMdFilename, tmpHtmlFilename);
     contents = await fs.readFile(tmpHtmlFilename);
+    logger.debug(`[${this.url}] pandoc html -> readable`);
     const readableArticle = await this.extractReadableContent(contents);
 
     const md5Contents = (await fs.readFile(tmpMdFilename)).toString();
@@ -174,6 +180,8 @@ class Crawler {
 
     await fs.unlink(tmpHtmlFilename);
     await fs.unlink(tmpMdFilename);
+
+    logger.debug(`[${this.url}] pandoc done`);
 
 
     return pandocCrawl;
@@ -197,8 +205,9 @@ class Crawler {
 }
 
 class RedisCrawler {
-  constructor(client) {
+  constructor(client, database) {
     this.client = client;
+    this.database = database;
   }
 
   async crawl(url) {
@@ -206,13 +215,11 @@ class RedisCrawler {
 
       const alreadyCrawled = await this.client.get(this.getCrawlKey(url));
       if (alreadyCrawled === 'DONE') {
-        //console.log('URL', url, 'ALREADY CRAWLED');
+        logger.debug('URL', url, 'ALREADY CRAWLED');
 
         await this.publishCrawlResult(url);
 
-        const key = this.getPageKey(url);
-        const page = await this.client.get(key);
-        return JSON.parse(page);
+        return this.database.getPage(url);
       }
 
       await this.storeCrawlState(url, 'BUSY');
@@ -235,27 +242,18 @@ class RedisCrawler {
   }
 
   getCrawlKey(url) { return `crawler:${url}`; }
-  getPageKey(url) { return `page:${url}`; }
   getScreenshotKey(url) { return `screenshot:${url}`; }
 
   async savePage(page, url) {
     const screenshotBinaryContents = page.screenshot;
     delete page.screenshot;
 
-    const key = this.getPageKey(url);
-    await this.client.set(key, JSON.stringify(page));
-
-    const screenshotKey = this.getScreenshotKey(url);
-    await this.client.set(screenshotKey, screenshotBinaryContents);
+    await this.database.storePage(page, url);
+    await this.database.storeScreenshot(screenshotBinaryContents, url);
   }
 
   async getPage(url) {
-    const key = this.getPageKey(url);
-    const page = await this.client.get(key);
-    if (!page) {
-      return null;
-    }
-    return JSON.parse(page);
+    return this.database.getPage(url);
   }
 
   async storeCrawlState(url, state) {
@@ -268,8 +266,6 @@ class RedisCrawler {
     //const screenshotKey = this.getScreenshotKey(url);
     //const screenshot = await this.client.get(screenshotKey);
     //await this.client.publish('crawled', JSON.stringify({url, page, screenshot}));
-    const pageKey = this.getPageKey(url);
-    await this.client.publish('crawled', pageKey);
   }
 
 

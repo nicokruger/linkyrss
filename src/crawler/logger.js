@@ -47,7 +47,7 @@ const createLogger = (module) => {
     });
 
     const logger = winston.createLogger({
-        level: 'info',
+      level: process.env.DEBUG ? 'debug' : 'info',
         format: winston.format.combine(
             winston.format.label({ label: filename }),
             winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),

@@ -1,6 +1,10 @@
 const { ChatOpenAI } = require('langchain/chat_models/openai');
 const { PromptTemplate }  = require( "langchain/prompts");
 const { LLMChain }  = require( "langchain/chains");
+const createLogger = require('./logger');
+const logger = createLogger(module);
+
+
 
 const template = `Within the block below is the full content of a page I am interested in. The url is {my_url}.
 
@@ -49,6 +53,7 @@ async function get_llm_summary(chain, inputs) {
 }
 
 async function summarise_url(url, content) {
+  logger.debug(`[summarise_url] ${url}`);
   const prompt = PromptTemplate.fromTemplate(template, {my_url: url, content: content});
   const llm = new ChatOpenAI({
     modelName:'gpt-3.5-turbo-16k',
@@ -63,6 +68,7 @@ async function summarise_url(url, content) {
     content,
   }
   data.summary = await get_llm_summary(chain, inputs);
+  logger.debug(`[summarise_url] ${url} summary: ${data.summary}`);
   return data;
 }
 

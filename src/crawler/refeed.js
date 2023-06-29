@@ -48,6 +48,8 @@ async function parseAndStoreFeed(queues, feed, n = 100) {
         return;
       }
 
+      //const a = await queue.refeed({name, article, index}).run();
+
       const chain = queue.chain([
         queue.refeed({name, article, index}),
         queue.crawl(),

@@ -12,10 +12,12 @@ const queue = new Queue({
   ns: 'rssai6'
 });
 const createLogger = require('./logger');
+const database = require('./database.js');
 const logger = createLogger(module);
 
-async function crawl(url) {
-  const redisCrawler = new RedisCrawler(client);
+async function crawl(db, url) {
+  if (!db) throw new Error('db required');
+  const redisCrawler = new RedisCrawler(client, db);
 
   const page = await redisCrawler.crawl(url);
   return page;
@@ -32,6 +34,7 @@ start().then( () => {
 
 module.exports.getQueues = async (client) => {
 
+  const db = new database.FilesystemDatabase("./work");
   queue.on('task:progress', async (data) => {
 
     //console.log('progress', data);
@@ -60,12 +63,16 @@ module.exports.getQueues = async (client) => {
   queue.registerTask('crawl', async (article) => {
     //console.log('crawl', article.link);
     const url = article.link;
-    const page = await crawl(url);
-    return {page,article};
+    await crawl(db, url);
+    return {url,article};
   });
 
-  queue.registerTask('summary', async ({page,article}) => {
-    const summary = await summarise.summarise_url(article.link, page.pandocCrawl.readableArticle.textContent);
+  queue.registerTask('summary', async ({url,article}) => {
+    const page = await db.getPage(url);
+    const summary = await summarise.summarise_url(
+      article.link,
+      page.pandocCrawl.readableArticle.textContent
+    );
 
     const key = `summary:${page.url}`;
     await client.set(key, JSON.stringify(summary));

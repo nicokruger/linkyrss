@@ -22,6 +22,7 @@ async function pandocToMd(id, htmlFile, mdFile) {
         resolve(stdout);
       } else {
         logger.error('pandoc failed', code, signal);
+        logger.error(`pandoc command: ${pandocCommand}`);
 
         logger.warn(`pandoc process exited with code ${code}`);
         logger.warn('======= stdout =====');
