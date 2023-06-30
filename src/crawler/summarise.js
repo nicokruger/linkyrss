@@ -6,6 +6,7 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
 const feeds = require('./feeds.js');
+const aifunctions = require('./aifunctions.js');
 
 
 
@@ -57,35 +58,12 @@ async function get_llm_summary(chain, inputs) {
   return content.trim();
 }
 
-async function group_or_regroup_article(articles, groups, {article_url, group_name}) {
-  //console.log('group_or_regroup_article', article_url, group_name);
-  // find article by url / link
-  //console.log('articles', articles.slice(0,3));
-  const article = articles.find( (a) => a.article.link == article_url);
-  //console.log('article', article);
-  if (!article) {
-    throw new Error('whoops');
-  }
-  // check if the item exists anywhere else and remove it
-  for (const group in groups) {
-    const index = groups[group].findIndex( (a) => a.article.link == article_url);
-    if (index > -1) {
-      groups[group].splice(index, 1);
-      // if the group is empty, remove it
-      if (groups[group].length == 0) {
-        delete groups[group];
-      }
-    }
-  }
-  if (!groups[group_name]) {
-    groups[group_name] = [];
-  }
-  groups[group_name].push(article);
-  
-
-  return `Added ${article.link} article to group ${group_name}`;
-}
-async function get_llm_raw(article_groups, allArticles, system, in_template, examples, inputs) {
+async function get_llm_raw(
+  functiondata,
+  system,
+  in_template,
+  examples,
+  inputs) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
@@ -127,41 +105,25 @@ async function get_llm_raw(article_groups, allArticles, system, in_template, exa
   while ((!finish_reason || finish_reason === 'function_call')) {
     try {
       //console.log('send msges', messages);
+      const functions = functiondata.functions;
+      const available_functions = functiondata.available_functions;
       const chatCompletion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo-16k",
         //model: "gpt-3.5-turbo-0613",
         messages,
-        functions: [{
-          name: "group_or_regroup_article",
-          description: "Puts or moves an article into a specific group",
-          parameters: {
-            type: "object",
-            properties: {
-              article_url: {
-                type: "string",
-                description: "The url of the article to group or regroup",
-              },
-              group_name: {
-                type: "string",
-                description: "The name of the group to put or move the article in. Group will be created if it doesn't exist",
-              }
-            },
-            required: ["article_url", "group_name"],
-          }
-        }],
+        functions,
         function_call: "auto"
       });
+
       const firstChoice = chatCompletion.data.choices[0];
       const response_message = firstChoice.message;
       const assistant = response_message.content;
       content = assistant ?? 'flezbar';
       finish_reason = firstChoice.finish_reason;
       if (response_message.function_call) {
-          const available_functions = {
-              'group_or_regroup_article': group_or_regroup_article.bind(null, allArticles, article_groups)
-          };
+
           const function_name = response_message.function_call.name;
-          const function_to_call = available_functions[function_name];
+          const function_to_call = await available_functions[function_name];
           const function_args = JSON.parse(response_message.function_call.arguments);
 
           const function_response = await function_to_call({
@@ -216,6 +178,9 @@ async function get_llm_raw(article_groups, allArticles, system, in_template, exa
       sleep *= 1.1;
     }
   }
+
+  console.log(`  function called ${aifunctions.group_called} times`);
+  aifunctions.group_called = 0;
 
   if (last_error) {
     // print the error stack trace
@@ -356,9 +321,17 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       new_posts
     }
 
+    const functiondata = {
+      functions: [],
+      available_functions: {}
+    };
+      aifunctions.setup_group_or_regroup_article(
+        allArticles,
+        article_groups
+      )(functiondata.functions, functiondata.available_functions);
+
     const output = await get_llm_raw(
-      article_groups,
-      allArticles,
+      functiondata,
       system,
       template,
       examples,
