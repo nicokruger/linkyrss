@@ -1,3 +1,7 @@
+const summarise = require('./summarise');
+const { Feed, Category } = require('feed');
+
+
 async function getFeed(client, name) {
   const latestArticlesKeys = await client.keys(`article:${name}:*`);
   const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key, index) => {
@@ -19,26 +23,64 @@ class FeedWriter {
     this.client = client;
   }
 
-  async writeArticle(idx, title, link, summary) {
-    const article = {
+  async writeArticle(idx, title, articles) {
+    const key = `aiarticle:${this.name}:${idx}`;
+    await this.client.set(key, JSON.stringify({
+      idx,
       title,
-      guid: title + '_summary',
-      link: 'https://www.inmytree.co.za/' + link,
-      description: 'My AI summary of ' + title,
-      pubDate: new Date().toISOString(),
-      content: summary,
-      summary: summary,
-      isSummary: true
-    }
-    const key = `article:${this.name}:${idx}`;
-    console.log('write article', key, article);
-    await this.client.set(key, JSON.stringify(article));
+      articles
+    }));
   }
 
   async writeFeedMeta(data) {
     const key = 'feed:' + this.name;
     console.log('write feed', key, data);
     await this.client.set(key, JSON.stringify(data));
+  }
+
+  async getFeed() {
+    const articleKeys = await this.client.keys(`aiarticle:${this.name}:*`);
+    const aiArticles = (await Promise.all(articleKeys.map( async (key, index) => {
+      const aiarticle = JSON.parse(await this.client.get(key));
+      return aiarticle;
+    })));
+    const articles = (await Promise.all(aiArticles.map( async (aiarticle, index) => {
+      const {title, articles} = aiarticle;
+      const summary = await summarise.prepareAiArticle(
+        this.client,
+        title,
+        JSON.parse(articles)
+      );
+      return {title, summary};
+    }))).filter( article => article !== null);
+
+    const feed = new Feed({
+      title: '[AI] ' + this.name,
+      description: "AI for " + this.name,
+      id: this.name,
+      link: 'https://www.inmytree.co.za/' + this.name,
+      updated: new Date(),
+      generator: 'rss-atom-feed-processor',
+    });
+
+
+    articles.forEach(({title, summary}) => {
+      const narticle = {
+        title,
+        guid: title + '_summary',
+        link: 'https://www.inmytree.co.za/' + title,
+        description: 'My AI summary of ' + title,
+        date: new Date(),
+        content: summary,
+        summary: summary,
+        isSummary: true
+      }
+      console.log('add item', narticle);
+
+      feed.addItem(narticle);
+    });
+
+    return feed;
   }
 }
 

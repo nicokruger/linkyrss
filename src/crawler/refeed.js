@@ -114,30 +114,6 @@ function createNewFeed(meta, feedUrl, articles) {
   return feed;
 }
 
-async function getFeed(name) {
-  const latestArticlesKeys = await client.keys(`article:${name}:*`);
-  const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key, index) => {
-    const article = JSON.parse(await client.get(key));
-    const summaryKey = `summary:${article.link}`;
-    const summary = JSON.parse(await client.get(summaryKey));
-    if (summary) {
-      //const newContent = summary.summary + "<br/><br/>" + article.content;
-      //article.content = newContent;
-      //article.summary = `<![CDATA[${summary.summary}<br/><br/>${article.summary}]]>`;
-      //article.summary = "cheese";
-      const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
-      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
-      return article;
-    } else if (article.isSummary) {
-      return article;
-    } else {
-      return null;
-    }
-  }))).filter( article => article !== null);
-  return latestArticles;
-}
-
-
 app.get('/feed/:name', async (req, res) => {
   const newFeedUrl = req.url;
   const key = `feed:${req.params.name}`;
@@ -147,12 +123,22 @@ app.get('/feed/:name', async (req, res) => {
   }
 
   const feedInfo = JSON.parse(await client.get(key));
-  const feedArticles = await getFeed(req.params.name);
+  const feedArticles = await feeds.getFeed(req.params.name);
   const newFeed = createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
   const atomXml = newFeed.atom1();
 
   res.header('Content-Type', 'application/atom+xml');
   res.send(atomXml);
+});
+
+app.get('/ai_feed/:name', async (req, res) => {
+  const ai = new feeds.FeedWriter(req.params.name, client);
+  const feed = await ai.getFeed();
+
+  const atomXml = feed.atom1();
+  res.header('Content-Type', 'application/atom+xml');
+  res.send(atomXml);
+
 });
 
 app.get('/', async (req, res) => {
@@ -173,6 +159,7 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 60 * 60;
 
+  /*
   const feedwriter = new feeds.FeedWriter('Test', client, queues);
   summary.summariseFeeds(feedwriter, client, config.feeds);
   feedwriter.writeFeedMeta({
@@ -182,6 +169,7 @@ app.listen(PORT, async () => {
       description:'Test',
     }
   });
+  */
 
   /*
   while (true) {

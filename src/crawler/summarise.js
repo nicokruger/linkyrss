@@ -66,15 +66,19 @@ async function group_or_regroup_article(articles, groups, {article_url, group_na
   if (!article) {
     throw new Error('whoops');
   }
-  if (!groups[group_name]) {
-    groups[group_name] = [];
-  }
   // check if the item exists anywhere else and remove it
   for (const group in groups) {
     const index = groups[group].findIndex( (a) => a.article.link == article_url);
     if (index > -1) {
       groups[group].splice(index, 1);
+      // if the group is empty, remove it
+      if (groups[group].length == 0) {
+        delete groups[group];
+      }
     }
+  }
+  if (!groups[group_name]) {
+    groups[group_name] = [];
   }
   groups[group_name].push(article);
   
@@ -246,12 +250,25 @@ async function summarise_url(url, content) {
   return data;
 }
 
-async function prepareNewArticle(group, articles) {
+async function prepareAiArticle(client, group, articles) {
   let content = '';
-  content = '## ' + group + '\n\n';
+  content = '<h3>' + group + '</h3>\n';
   for (const article of articles) {
-    content += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
+    console.log('article', article);
+    const summaryKey = `summary:${article.article.link}`;
+    const summary = JSON.parse(await client.get(summaryKey));
+    if (summary) {
+      content += `<h4>${article.article.title}</h4>
+<a href="${article.article.link}">${article.article.link}</a>
+<p>
+${summary.summary}
+</p>`;
+      //content += `### ${article.article.title}\nArticle url: ${article.article.link}\n${summary.summary}\n\n`;
+    } else {
+      return null;
+    }
   }
+  content += '\n\n<hr/>\n\n';
   return content;
 
 
@@ -349,16 +366,17 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
         new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
       }
 
-      const newArticle = await prepareNewArticle(group, article_groups[group]);
-      await feedwriter.writeArticle(idx, group, group, newArticle);
+      await feedwriter.writeArticle(
+        idx,
+        group,
+        JSON.stringify(article_groups[group])
+      );
 
       idx += 1;
 
     }
     console.log('new_posts', new_posts);
     //new_posts += output;
-
-
 
 
   }
@@ -369,4 +387,5 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 
 module.exports.summarise_url = summarise_url;
 module.exports.summariseFeeds = summariseFeeds;
+module.exports.prepareAiArticle = prepareAiArticle;
   
