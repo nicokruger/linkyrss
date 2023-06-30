@@ -89,7 +89,6 @@ function createNewFeed(meta, feedUrl, articles) {
   });
 
   articles.forEach((article) => {
-    console.log('wtf', article);
     feed.addItem({
       title: article.title,
       id: article.guid + 'refeedy',
@@ -159,7 +158,6 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 60 * 60;
 
-  /*
   const feedwriter = new feeds.FeedWriter('Test', client, queues);
   summary.summariseFeeds(feedwriter, client, config.feeds);
   feedwriter.writeFeedMeta({
@@ -169,7 +167,6 @@ app.listen(PORT, async () => {
       description:'Test',
     }
   });
-  */
 
   /*
   while (true) {

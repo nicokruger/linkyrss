@@ -28,7 +28,7 @@ async function get_llm_summary(chain, inputs) {
   while ((!content.trim() || content == "") && num_tries > 0) {
     try {
       const chain_output = await chain.call(inputs);
-      console.log(JSON.stringify(chain_output, null, 2));
+      //console.log(JSON.stringify(chain_output, null, 2));
       throw new Error("stop");
       content = chain_output['text'];
       num_tries -= 1;
@@ -58,7 +58,7 @@ async function get_llm_summary(chain, inputs) {
 }
 
 async function group_or_regroup_article(articles, groups, {article_url, group_name}) {
-  console.log('group_or_regroup_article', article_url, group_name);
+  //console.log('group_or_regroup_article', article_url, group_name);
   // find article by url / link
   //console.log('articles', articles.slice(0,3));
   const article = articles.find( (a) => a.article.link == article_url);
@@ -176,7 +176,7 @@ async function get_llm_raw(article_groups, allArticles, system, in_template, exa
           });
         
           content = '';
-        console.log('pls continue', finish_reason);
+        //console.log('pls continue', finish_reason);
 
 
         /*
@@ -254,7 +254,7 @@ async function prepareAiArticle(client, group, articles) {
   let content = '';
   content = '<h3>' + group + '</h3>\n';
   for (const article of articles) {
-    console.log('article', article);
+    //console.log('article', article);
     const summaryKey = `summary:${article.article.link}`;
     const summary = JSON.parse(await client.get(summaryKey));
     if (summary) {
@@ -332,14 +332,23 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   console.log('total articles', allArticles.length);
   const chunkedArticles = _.chunk(allArticles, 3);
   let article_groups = {};
+  let i = 0;
+  let totalProcessed = 0;
+
+  function formatGroupedPost({summary,article}) {
+    //return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
+    return `### ${article.title}\nArticle url: ${article.link}\n\n`;
+  }
+  function formatIncomingPost({summary,article}) {
+    return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
+  }
   for (const chunk of chunkedArticles) {
-    console.log('chunk', chunk.length);
+    const progress = Math.round((i / chunkedArticles.length) * 100);
+    console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
     markdowns = '';
     //markdowns += `## ${feed.name}\n\n`;
-    markdowns += chunk.map(({summary,article}) => {
-      return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
-    }
-    ).join('\n\n');
+    markdowns += chunk.map(formatIncomingPost)
+      .join('\n\n');
 
     //console.log('markdowns', markdowns);
     const inputs = {
@@ -347,7 +356,6 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       new_posts
     }
 
-    console.log('start');
     const output = await get_llm_raw(
       article_groups,
       allArticles,
@@ -355,7 +363,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       template,
       examples,
       inputs);
-    console.log('article_groups', article_groups);
+    //console.log('article_groups', article_groups);
 
     new_posts = '';
     let idx = 0;
@@ -363,7 +371,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       new_posts += `## ${group}\n\n`;
       for (const article of article_groups[group]) {
         //new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
-        new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
+        new_posts += formatGroupedPost(article);
       }
 
       await feedwriter.writeArticle(
@@ -375,13 +383,21 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       idx += 1;
 
     }
-    console.log('new_posts', new_posts);
+    //console.log('new_posts', new_posts);
     //new_posts += output;
 
+    totalProcessed += chunk.length;
+    let totalGrouped = 0;
+    for (const group of Object.keys(article_groups)) {
+      totalGrouped += article_groups[group].length;
+    }
+    console.log(`totalProcessed: ${totalProcessed} totalGrouped: ${totalGrouped}`);
 
+
+    i += 1;
   }
 
-  console.log('output', output);
+  //console.log('output', output);
 
 }
 

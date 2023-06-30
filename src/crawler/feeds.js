@@ -34,7 +34,6 @@ class FeedWriter {
 
   async writeFeedMeta(data) {
     const key = 'feed:' + this.name;
-    console.log('write feed', key, data);
     await this.client.set(key, JSON.stringify(data));
   }
 
@@ -75,7 +74,6 @@ class FeedWriter {
         summary: summary,
         isSummary: true
       }
-      console.log('add item', narticle);
 
       feed.addItem(narticle);
     });
