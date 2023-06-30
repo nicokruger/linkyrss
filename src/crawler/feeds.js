@@ -85,8 +85,7 @@ class FeedWriter {
 module.exports.getFeedArticles = async function (client, feedName) {
   const key = `feed:${feedName}`;
   if (!await client.exists(key)) {
-    res.status(404).send('Feed not found');
-    return;
+    return null;
   }
 
   const feedArticles = await getFeed(client, feedName);

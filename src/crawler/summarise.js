@@ -30,7 +30,6 @@ async function get_llm_summary(chain, inputs) {
     try {
       const chain_output = await chain.call(inputs);
       //console.log(JSON.stringify(chain_output, null, 2));
-      throw new Error("stop");
       content = chain_output['text'];
       num_tries -= 1;
     } catch (e) {
@@ -289,12 +288,16 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   for (const feed of feedsdata) {
     //console.log('feed', feed);
     const feedArticles = await feeds.getFeedArticles(client, feed.name);
+    if (!feedArticles) {
+      logger.info(feed.name, 'no feed articles');
+      continue;
+    }
 
     allArticles.push(...feedArticles);
 
   }
 
-  console.log('total articles', allArticles.length);
+  logger.info('total articles', allArticles.length);
   const chunkedArticles = _.chunk(allArticles, 3);
   let article_groups = {};
   let i = 0;
