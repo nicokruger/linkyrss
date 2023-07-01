@@ -16,7 +16,7 @@ if (!configFile) {
   console.error('Please specify a config file');
   process.exit(1);
 }
-// Function to parse the given RSS/Atom feed URL, store the latest n articles in Redis, and create a new Atom feed from the stored articles.
+
 async function parseAndStoreFeed(queues, feed, n = 500) {
   const {url,name} = feed;
   try {
@@ -32,17 +32,17 @@ async function parseAndStoreFeed(queues, feed, n = 500) {
     const queue = q;
 
 
-    latestArticles.forEach( async (article, index) => {
-
-      if (index === 0) {
+    let first = true;
+    for (const article of latestArticles) {
+      const index = (article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id);
+      if (first) {
         const feedData = {
           meta: article.meta,
           ...feed,
         }
         await client.set(`feed:${name}`, JSON.stringify(feedData));
+        first = false;
       }
-
-      logger.info('add article', article.link);
 
       if (article.link === undefined
           || article.link === null
@@ -54,13 +54,20 @@ async function parseAndStoreFeed(queues, feed, n = 500) {
       //const a = await queue.refeed({name, article, index}).run();
 
       const chain = queue.chain([
-        queue.refeed({name, article, index}),
-        queue.crawl(),
+        queue.crawl({name, article, index}),
         queue.summary()
       ]);
       children.push(chain);
 
-    });
+    };
+    //console.log('children length', children.length);
+
+    if (!children.length) {
+      logger.warn('there are no jobs for feed ' + feed.name);
+      return;
+    }
+
+    logger.info(`[${feed.name}] start ${children.length} jobs`);
 
     //for (const c of children) {
     //  c.run();

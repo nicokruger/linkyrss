@@ -9,7 +9,7 @@ const client = redis.createClient({url:redisUrl});
 const queue = new Queue({
   redisURL: redisUrl,
   concurrency:4,
-  ns: 'rssai9'
+  ns: 'rssai1:'
 });
 const createLogger = require('./logger');
 const logger = createLogger(module);
@@ -55,26 +55,26 @@ module.exports.getQueues = async (client) => {
     }
   });
 
-  queue.registerTask('refeed', async ({name, article,index}) => {
+  queue.registerTask('crawl', async ({name, article,index}) => {
     await client.set(`article:${name}:${index}`, JSON.stringify(article));
 
-    return article;
-  });
-  queue.registerTask('crawl', async (article) => {
-    //console.log('crawl', article.link);
     const url = article.link;
     await crawl(db, url);
+
     return {url,article};
   });
 
   queue.registerTask('summary', async ({url,article}) => {
     const page = await db.getPage(url);
+    const key = `summary:${page.url}`;
+    const alreadyExists = await client.exists(key);
+    if (alreadyExists) return article;
+
     const summary = await summarise.summarise_url(
       article.link,
       page.pandocCrawl.readableArticle.textContent
     );
 
-    const key = `summary:${page.url}`;
     await client.set(key, JSON.stringify(summary));
 
     return article;
