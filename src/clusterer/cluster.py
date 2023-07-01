@@ -1,6 +1,8 @@
 # imports
+import openai
 import numpy as np
 import pandas as pd
+import pprint
 
 # load data
 datafile_path = "./embeddings.csv"
@@ -44,9 +46,9 @@ plt.title("Clusters identified visualized in language 2d using t-SNE")
 
 #plt.show()
 
-import openai
 
 # Reading a review which belong to each group.
+total_posts = 0
 rev_per_cluster = 5
 
 for i in range(n_clusters):
@@ -59,16 +61,22 @@ for i in range(n_clusters):
         #.sample(rev_per_cluster, random_state=42)
         .values
     )
-    response = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=f'What do the following posts have in common?\n\nPosts:\n"""\n{posts}\n"""\n\nTheme:',
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo-16k",
+        messages=[
+            {
+                "role":"user",
+                "content":f'What do the following posts have in common?\n\nPosts:\n"""\n{posts}\n"""\n\nTheme:'
+            }
+        ],
         temperature=0,
         max_tokens=64,
         top_p=1,
         frequency_penalty=0,
         presence_penalty=0,
     )
-    print(response["choices"][0]["text"].replace("\n", ""))
+    print(response["choices"][0]["message"]["content"])
+
 
     #sample_cluster_rows = df[df.Cluster == i].sample(rev_per_cluster, random_state=42)
     sample_cluster_rows = df[df.Cluster == i]
@@ -79,5 +87,8 @@ for i in range(n_clusters):
         #print(sample_cluster_rows.summary.links[j], end=",  ")
         #print(sample_cluster_rows.summary.str[:1000000000].values[j])
         print("\n")
+        total_posts += 1
 
     print("-" * 100)
+
+print(f"Total posts: {total_posts}")
