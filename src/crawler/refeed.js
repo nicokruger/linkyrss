@@ -17,7 +17,7 @@ if (!configFile) {
   process.exit(1);
 }
 // Function to parse the given RSS/Atom feed URL, store the latest n articles in Redis, and create a new Atom feed from the stored articles.
-async function parseAndStoreFeed(queues, feed, n = 100) {
+async function parseAndStoreFeed(queues, feed, n = 200) {
   const {url,name} = feed;
   try {
     const articles = await feedparser.parse(url, {
@@ -171,6 +171,7 @@ app.listen(PORT, async () => {
 
   /*
   while (true) {
+
     for (const feed of config.feeds) {
       logger.info(`[REFEED] ${feed.name}`);
       parseAndStoreFeed(queues, feed).catch(logger.info);

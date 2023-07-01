@@ -18,15 +18,23 @@ function formatIncomingPost({summary,article}) {
 function formatPostNoUrl({summary,article}) {
   return `### ${article.title}\n\n${summary.summary}\n\n`;
 }
+function formatTagPost({summary,article}) {
+  const title = article.title;
+  const link = article.link;
+  const tags = summary.tags
+    .filter( t => t.confidence > 0.7)
+    .map(t => `#${t.tag}`).join(' ');
+  return `### ${title} ${tags}\n${link}\n\n`;
+}
 
 
-const template = `Within the block below is the full content of a page I am interested in. The url is {my_url}.
+const template = `You are an expert news reporter. Within the block below is the content of a page I am interested in. The url is {my_url}.
 
-\`\`\`html
+\`\`\`
 {content}
 \`\`\`
 
-Please summarise the contents of the provided HTML page. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth.
+Please summarise the contents of the provided page. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
 
 `
 
@@ -123,12 +131,12 @@ async function get_llm_raw(
     });
   }
   messages.push({role: "user", content: prompt});
+  //console.log('prompt', prompt);
 
 
   while ((!finish_reason || finish_reason === 'error' || finish_reason === 'function_call') && (num_tries > 0)) {
     try {
       last_error = null;
-      //console.log('send msges', messages);
       const functions = functiondata.functions;
       const available_functions = functiondata.available_functions;
       const timeouters = new Promise( (resolve) => {
@@ -230,6 +238,32 @@ async function get_llm_raw(
 }
 
 
+async function get_llm_tags(url, content) {
+  const template = `You are a bot that suggests appropriate wikipedia style news and tags for a piece of content:
+
+{content}`;
+  const functiondata = { functions: [], available_functions: {} };
+  const tags = [];
+  aifunctions.setup_tags_creator( tags )(functiondata.functions, functiondata.available_functions);
+
+  const inputs = {
+    content
+  }
+
+  const output = await get_llm_raw(
+    functiondata,
+    "",
+    template,
+    [],
+    inputs,
+    [],
+    {"name":"tags_creator"}
+  );
+
+  return tags;
+
+}
+
 async function summarise_url(url, content) {
   logger.debug(`[summarise_url] ${url}`);
   const prompt = PromptTemplate.fromTemplate(template, {my_url: url, content: content});
@@ -246,7 +280,13 @@ async function summarise_url(url, content) {
     content,
   }
   data.summary = await get_llm_summary(chain, inputs);
-  logger.debug(`[summarise_url] ${url} summary: ${data.summary}`);
+
+  const tags = await get_llm_tags(url, content);
+  data.tags = tags;
+
+  const tagsStr = tags.map(t => `${t.tag}=${t.confidence}` ).join(', ');
+  logger.debug(`[summarise_url] ${url} summary: ${data.summary} tags: ${tagsStr}`);
+
   return data;
 }
 
@@ -376,15 +416,15 @@ async function summariseFeeds(feedwriter, client, feedsdata) {
 
 You are a News expert, researcher and blogger. What are the trends and topics discussed in these articles? Provide a markdown output block with each trend or topic as a heading and a short sentence describing the subject matter and titles of posts discussing it. `
 */
-  const template = `I have too many unread articles in my RSS fead. It is impossible for me to keep up. I need your help to group the folowing articles together using heuristics around similairity, category, topics, trends and so forth:
+  const template = `Group all of the following posts into relevant sections based on tags provided:
 
-Use the following groups/topics/categories:
-{categories}
+## Existing Topics
+{new_posts}
 
-# Posts from my RSS feeds
-{markdowns}
+## Incoming Posts to analyze
+{markdowns}`;
 
-Provide a grouping of post and topic. Choose the most appropriate topic from the list of available topics for each post.`;
+//Provide a grouping of post and topic. Choose the most appropriate topic from the list of available topics for each post.`;
 
   const system = "";
   //const system = "The user is going to provide a list of markdown article summaries. You are CmdrTaco, the editor of slashdot. you know when slasdhot summaries multiple related articles? You're doing that.";
@@ -431,7 +471,8 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   allArticles = _.shuffle(allArticles);
 
   //const categories = await getCategories(allArticles);
-  const categories = ['Cheese'];
+  //const categories = ['Cheese'];
+  const categories = [];
   /*
   const categories = [
     'Artificial Intelligence',
@@ -447,7 +488,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 
   logger.info('total articles', allArticles.length);
 
-  const chunkedArticles = _.chunk(allArticles, 5);
+  const chunkedArticles = _.chunk(allArticles, 4);
   let article_groups = {};
   let i = 0;
   let totalProcessed = 0;
@@ -457,14 +498,14 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
     console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
     markdowns = '';
     //markdowns += `## ${feed.name}\n\n`;
-    markdowns += chunk.map(formatIncomingPost)
+    markdowns += chunk.map(formatTagPost)
       .join('\n\n');
 
     const categories_str = categories.map(c => `- ${c}`).join('\n');
-    //console.log('markdowns', markdowns);
     const inputs = {
       markdowns,
-      categories: categories_str
+      categories: categories_str,
+      digests: new_posts
     }
 
     const functiondata = {
@@ -481,7 +522,10 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       system,
       template,
       examples,
-      inputs);
+      inputs,
+      [],
+      //{"name":"group_or_regroup_article"}
+    );
     //console.log('article_groups', article_groups);
 
     new_posts = '';
@@ -490,7 +534,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       new_posts += `## ${group}\n\n`;
       for (const article of article_groups[group]) {
         //new_posts += `### ${article.article.title}\nArticle url: ${article.article.link}\n${article.summary.summary}\n\n`;
-        new_posts += formatGroupedPost(article);
+        new_posts += formatTagPost(article);
       }
 
       await feedwriter.writeArticle(
@@ -503,6 +547,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 
     }
     console.log('new_posts', new_posts);
+
     //new_posts += output;
 
     totalProcessed += chunk.length;
@@ -523,4 +568,6 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 module.exports.summarise_url = summarise_url;
 module.exports.summariseFeeds = summariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
+module.exports.get_llm_raw = get_llm_raw;
+module.exports.get_llm_tags = get_llm_tags;
   

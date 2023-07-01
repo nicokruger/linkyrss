@@ -9,7 +9,7 @@ const client = redis.createClient({url:redisUrl});
 const queue = new Queue({
   redisURL: redisUrl,
   concurrency:4,
-  ns: 'rssai7'
+  ns: 'rssai9'
 });
 const createLogger = require('./logger');
 const logger = createLogger(module);

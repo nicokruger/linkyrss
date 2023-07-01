@@ -2,12 +2,8 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 
 module.exports.group_called = 0;
-async function group_or_regroup_article(articles, groups, {article_url, topic}) {
-  if (article_url.trim() == '') {
-    return "Invalid empty article url";
-  }
-  const group_name = topic;
-  console.log('group_or_regroup_article', article_url, group_name);
+async function group_or_regroup_article(articles, groups, {article_url, tag_name}) {
+  console.log('group_or_regroup_article', article_url, '|', tag_name);
   // find article by url / link
   //console.log('articles', articles.slice(0,3));
   let moved = false;
@@ -30,42 +26,42 @@ async function group_or_regroup_article(articles, groups, {article_url, topic}) 
       }
     }
   }
-  if (!groups[group_name]) {
-    groups[group_name] = [];
+  if (!groups[tag_name]) {
+    groups[tag_name] = [];
   }
-  groups[group_name].push(article);
+  groups[tag_name].push(article);
   
   module.exports.group_called += 1;
 
   if (!moved) {
-    return `${article.article.link} added to group ${group_name} from now on.`;
+    return `${article.article.link} added to group ${tag_name} from now on.`;
   } else {
-    return `${article.article.link} has been moved to group ${group_name}. Note: this is an expensive operation.`;
+    return `${article.article.link} has been moved to group ${tag_name}. Note: this is an expensive operation.`;
   }
 }
 
 module.exports.assign_article_to_topic = function (allArticles, article_groups) {
   return function (functions, available_functions) {
     functions.push({
-      name: "assign_article_to_topic",
-      description: "Assigns an article to a topic",
+      name: "group_or_regroup_article",
+      description: "Group an article into a group, or move it from one group to another",
       parameters: {
         type: "object",
         properties: {
           article_url: {
             type: "string",
-            description: "The url of the article to assign to a topic",
+            description: "The article link URL"
           },
-          topic: {
+          tag_name: {
             type: "string",
-            description: "The topic to assign the article to",
-          }
+            description: "The group name to assign the article to. Should be a wikipedia-style tag. One tag per article."
+          },
         },
-        required: ["article_url", "topic"],
+        required: ["article_url", "tag_name"]
       }
     });
 
-    available_functions['assign_article_to_topic'] =  group_or_regroup_article.bind(null, allArticles, article_groups)
+    available_functions['group_or_regroup_article'] =  group_or_regroup_article.bind(null, allArticles, article_groups)
   }
 
 }
@@ -93,6 +89,47 @@ module.exports.setup_categories_creator = function (in_categories) {
       in_categories.push(...topics.split('|'));
       console.log('in_categories', in_categories);
       return `Categories replaced`;
+    }
+  }
+
+}
+
+
+
+module.exports.setup_tags_creator = function (in_tags) {
+  return function (functions, available_functions) {
+    functions.push({
+      name: "tags_creator",
+      description: "Assigns wikipedia-style tags and confidence levels to a piece of content",
+      parameters: {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": {
+                  "type": "string"
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["tag", "confidence"]
+            }
+          }
+        },
+        "required": ["tags"]
+      }
+    });
+
+    available_functions['tags_creator'] =  function ({tags}) {
+      in_tags.length = 0;
+      in_tags.push(...tags);
+      return `Set tags`;
     }
   }
 
