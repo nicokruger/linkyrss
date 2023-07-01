@@ -385,6 +385,79 @@ Provide a list of 15 topics that encompass the provided headlines and trends.`;
 
 }
 
+async function getAiVotes(articles) {
+
+  const personalities = [
+    'r/technology',
+    'r/programming',
+    'r/askscience',
+    'r/askhistorians',
+    'r/askphilosophy',
+    'r/politics',
+    'r/news',
+    'r/memes'
+  ];
+
+  const personalityStr = ' - ' + personalities.join(' - ')
+  const template = `For each of the following subreddits, provide the number of updoots as the post score and the top comment. Take the relevance of the post to the subreddit into account when predicting the number of upvotes:
+{personalityStr}
+
+
+Read the following article and provide a comment a post score:
+
+{markdowns}
+`;
+
+  const system = "";
+  const examples = []
+  const history = [];
+
+  const all_votes = {};
+
+  const chunkedArticles = _.chunk(articles, 1);
+  let i = 0;
+  for (const chunk of chunkedArticles) {
+
+    const progress = Math.round((i / chunkedArticles.length) * 100);
+    console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
+    i += 1;
+
+    const votes = {};
+
+    const functiondata = { functions: [], available_functions: {} };
+    aifunctions.setup_post_voter( votes )(functiondata.functions, functiondata.available_functions);
+
+    const markdowns = chunk.map(formatPostNoUrl)
+      .join('\n\n');
+
+    const inputs = {
+      personalityStr,
+      markdowns,
+    }
+
+    await get_llm_raw(
+      functiondata,
+      system,
+      template,
+      examples,
+      inputs,
+      history,
+      "auto"
+    );
+
+
+
+    const article = chunk[0].article;
+
+    all_votes[article.link] = votes;
+    console.log('=== ', article.title, ' ===', votes);
+  }
+
+  return all_votes;
+
+}
+
+
 async function prepareAiArticle(client, group, articles) {
   let content = '';
   content = '<h3>' + group + '</h3>\n';
@@ -473,6 +546,48 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   //const categories = await getCategories(allArticles);
   //const categories = ['Cheese'];
   const categories = [];
+
+  const votes = await getAiVotes(allArticles.slice(0,30));
+  console.log('votes', votes);
+
+  // calculate the total scores for all the personalities
+  const total_scores = {};
+  for (const article_link in votes) {
+    const article_votes = votes[article_link];
+    //console.log('pls', article_votes);
+    let total_score = 0;
+    for (const personality in article_votes) {
+      const vote = article_votes[personality].score;
+      //console.log('plss', article_votes[personality], vote);
+      total_score += vote;
+      //console.log('fff', total_score);
+    }
+    total_scores[article_link] = total_score;
+    //console.log('k', total_scores[article_link]);
+  }
+  //console.log('total_scores', total_scores);
+
+  const articlesWithScore = allArticles.map((article) => {
+    return {
+      article,
+      score: total_scores[article.article.link] ?? 0
+    };
+  });
+  // sort the articles by total score
+  const sorted_articles = _.sortBy(articlesWithScore, 'score').reverse();
+
+  // group the articles by personality
+  for (const aa of sorted_articles.slice(0,20)) {
+    //console.log('AA', aa);
+    const article = aa.article;
+    const score = aa.score;
+
+    console.log(' # ', article.article.title);
+    console.log('score', score);
+    console.log(article.summary.summary);
+    console.log("\n\n\n")
+  }
+
   /*
   const categories = [
     'Artificial Intelligence',

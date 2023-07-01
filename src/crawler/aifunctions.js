@@ -135,3 +135,59 @@ module.exports.setup_tags_creator = function (in_tags) {
 
 }
 
+
+module.exports.setup_post_voter = function (vote) {
+  return function (functions, available_functions) {
+    functions.push({
+      name: "set_post_score_and_comment",
+      description: "Sets the number of upvotes, downvotes and comment for a post in a subreddit",
+      parameters: {
+        type: "object",
+        properties: {
+          replies: {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                subreddit: {
+                  type: "string",
+                  description: "The subreddit"
+                },
+                comment: {
+                  type: "string",
+                  description: "The comment the poster made"
+                },
+                upvotes: {
+                  "type": "number",
+                  "description": "The total upvotes the post received in the subreddit (if any)",
+                },
+                downvotes: {
+                  "type": "number",
+                  "description": "The total downvotes the post received in the subreddit (if any)",
+                }
+              },
+              required: ["comment", "upvotes", "downvotes", "subreddit"],
+            }
+          },
+        },
+        required: ["replies"],
+      }
+    });
+
+    available_functions['set_post_score_and_comment'] =  function ({replies}) {
+      console.log('replies', replies);
+      for (const r of replies) {
+        const {subreddit, comment, upvotes, downvotes} = r;
+        vote[subreddit] = vote[subreddit] || {};
+        vote[subreddit].upvotes = upvotes;
+        vote[subreddit].downvotes = downvotes;
+        vote[subreddit].score = upvotes - downvotes;
+        vote[subreddit].comment = comment;
+      }
+      //console.log('score', , 'comment', comment);
+      return `Upvotes and comment set in the subreddit`;
+    }
+  }
+
+}
+
