@@ -1,13 +1,22 @@
+const createLogger = require('./logger');
+const logger = createLogger(module);
+
 module.exports.group_called = 0;
-async function group_or_regroup_article(articles, groups, {article_url, group_name}) {
-  //console.log('group_or_regroup_article', article_url, group_name);
+async function group_or_regroup_article(articles, groups, {article_url, topic}) {
+  if (article_url.trim() == '') {
+    return "Invalid empty article url";
+  }
+  const group_name = topic;
+  console.log('group_or_regroup_article', article_url, group_name);
   // find article by url / link
   //console.log('articles', articles.slice(0,3));
   let moved = false;
   const article = articles.find( (a) => a.article.link == article_url);
   //console.log('article', article);
   if (!article) {
-    throw new Error('whoops');
+    logger.error('Could not find article: ' + article_url);
+    logger.error('Urls were: ' + articles.map( (a) => a.article.link).join('\n'));
+    return 'Stop making up urls: ' + article_url + ' does not exist.';
   }
   // check if the item exists anywhere else and remove it
   for (const group in groups) {
@@ -35,55 +44,55 @@ async function group_or_regroup_article(articles, groups, {article_url, group_na
   }
 }
 
-module.exports.setup_group_or_regroup_article = function (allArticles, article_groups) {
+module.exports.assign_article_to_topic = function (allArticles, article_groups) {
   return function (functions, available_functions) {
     functions.push({
-      name: "group_or_regroup_article",
-      description: "Puts or moves an article into a specific group",
+      name: "assign_article_to_topic",
+      description: "Assigns an article to a topic",
       parameters: {
         type: "object",
         properties: {
           article_url: {
             type: "string",
-            description: "The url of the article to group or regroup",
+            description: "The url of the article to assign to a topic",
           },
-          group_name: {
+          topic: {
             type: "string",
-            description: "The name of the group to put or move the article in. Group will be created if it doesn't exist",
+            description: "The topic to assign the article to",
           }
         },
-        required: ["article_url", "group_name"],
+        required: ["article_url", "topic"],
       }
     });
 
-    available_functions['group_or_regroup_article'] =  group_or_regroup_article.bind(null, allArticles, article_groups)
+    available_functions['assign_article_to_topic'] =  group_or_regroup_article.bind(null, allArticles, article_groups)
   }
 
 }
 
-module.exports.setup_create_category = function () {
+module.exports.setup_categories_creator = function (in_categories) {
   return function (functions, available_functions) {
     functions.push({
-      name: "create_category",
-      description: "Creates a new category",
+      name: "set_topics",
+      description: "Sets the list of topics",
       parameters: {
         type: "object",
         properties: {
-          name: {
+          topics: {
             type: "string",
-            description: "The name of the category to create",
-          },
-          description: {
-            type: "string",
-            description: "A short description of the category",
+            description: "A | separated list of the full set of the new topics, e.g. 'People complaining about stuff|Cool Programming Things|Amazing Astronomy|... 10 more'",
           }
         },
-        required: ["name", "description"],
+        required: ["topics"],
       }
     });
 
-    available_functions['create_category'] =  function ({name}) {
-      return `Category ${name} created.`;
+    available_functions['set_topics'] =  function ({topics}) {
+      console.log('set topics', topics);
+      in_categories.length = 0;
+      in_categories.push(...topics.split('|'));
+      console.log('in_categories', in_categories);
+      return `Categories replaced`;
     }
   }
 

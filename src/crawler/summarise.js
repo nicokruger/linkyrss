@@ -8,6 +8,13 @@ const _ =  require('lodash');
 const feeds = require('./feeds.js');
 const aifunctions = require('./aifunctions.js');
 
+function formatGroupedPost({summary,article}) {
+  //return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
+  return `### ${article.title}\nArticle url: ${article.link}\n\n`;
+}
+function formatIncomingPost({summary,article}) {
+  return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
+}
 
 
 const template = `Within the block below is the full content of a page I am interested in. The url is {my_url}.
@@ -62,7 +69,10 @@ async function get_llm_raw(
   system,
   in_template,
   examples,
-  inputs) {
+  inputs,
+  history = [],
+  function_call = "auto"
+) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
@@ -98,20 +108,31 @@ async function get_llm_raw(
       content: example.assistant,
     });
   }
+  for (const h of history) {
+    messages.push({
+      role: "user",
+      content: h.user
+    });
+    messages.push({
+      role: "assistant",
+      content: h.assistant
+    });
+  }
   messages.push({role: "user", content: prompt});
 
 
-  while ((!finish_reason || finish_reason === 'function_call')) {
+  while ((!finish_reason || finish_reason === 'error' || finish_reason === 'function_call') && (num_tries > 0)) {
     try {
       //console.log('send msges', messages);
       const functions = functiondata.functions;
       const available_functions = functiondata.available_functions;
       const chatCompletion = await openai.createChatCompletion({
         model: "gpt-3.5-turbo-16k",
+        //stream: true,
         //model: "gpt-3.5-turbo-0613",
         messages,
         functions,
-        function_call: "auto"
+        function_call
       });
 
       const firstChoice = chatCompletion.data.choices[0];
@@ -124,11 +145,8 @@ async function get_llm_raw(
           const function_name = response_message.function_call.name;
           const function_to_call = await available_functions[function_name];
           const function_args = JSON.parse(response_message.function_call.arguments);
+          const function_response = await function_to_call(function_args);
 
-          const function_response = await function_to_call({
-              article_url: function_args.article_url,
-              group_name: function_args.group_name,
-          })
           messages.push(response_message);
           messages.push({
               role: 'function',
@@ -173,6 +191,7 @@ async function get_llm_raw(
       num_tries -= 1;
       last_error = e;
       logger.info(`[get_llm_raw] sleeping for ${sleep} seconds`);
+      finish_reason = 'error';
       await new Promise(r => setTimeout(r, sleep * 1000));
       sleep *= 1.1;
     }
@@ -214,6 +233,74 @@ async function summarise_url(url, content) {
   return data;
 }
 
+async function getCategories(articles) {
+
+  const template = `You are going to help me identify topics and trends from my posts. Be an expert, interesting, witty and insightful purveyor and classifier of internet posts. Be specifically aware of interesting trending topics and try to stay away from generic categories as much as possible. Each of these categories should be more like its own newspaper headline, under which all relevant articles will be posted.
+
+There are ${articles.length} posts.
+# Posts under consideration (there are ${articles.length} posts in total)
+{markdowns}
+
+Using the existing list of topics and the new posts under consideration, provide a list of 5 topics.
+`;
+
+  const system = "";
+  const examples = []
+  const history = [];
+
+  let categories = [];
+
+  const chunkedArticles = _.chunk(articles, 25);
+  let i = 0;
+  for (const chunk of chunkedArticles) {
+    const progress = Math.round((i / chunkedArticles.length) * 100);
+    console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
+    console.log('chunk size?!?!?!?!', chunk.length);
+
+    const functiondata = { functions: [], available_functions: {} };
+    const these_categories = [];
+    aifunctions.setup_categories_creator( these_categories )(functiondata.functions, functiondata.available_functions);
+    //console.log('functiondata', functiondata);
+
+    let markdowns = '';
+    //markdowns += `## ${feed.name}\n\n`;
+    markdowns += chunk.map(formatIncomingPost)
+      .join('\n\n');
+
+    const categories_str = categories.map(c => `- ${c}`).join('\n');
+
+
+    //console.log('categories_str', categories_str);
+    const inputs = {
+      markdowns,
+      categories_str
+    }
+
+    const output = await get_llm_raw(
+      functiondata,
+      system,
+      template,
+      examples,
+      inputs,
+      history,
+      {"name":"set_topics"}
+    );
+
+    //history.push({
+    //  user: chunk.map(formatGroupedPost).join('\n\n'),
+    //  assistant: these_categories.join(', '),
+    //});
+    
+
+    categories = categories.concat(these_categories);
+    console.log('categories', categories);
+
+  }
+
+  return categories;
+
+}
+
 async function prepareAiArticle(client, group, articles) {
   let content = '';
   content = '<h3>' + group + '</h3>\n';
@@ -247,13 +334,13 @@ You are a News expert, researcher and blogger. What are the trends and topics di
 */
   const template = `I have too many unread articles in my RSS fead. It is impossible for me to keep up. I need your help to group the folowing articles together using heuristics around similairity, category, topics, trends and so forth:
 
+Use the following groups/topics/categories:
+{categories}
+
 # Posts from my RSS feeds
 {markdowns}
 
-# Candiate New Grouped Posts by Trend/Category
-{new_posts}
-
-Provide the markdown containing new candidate posts as markdown, grouped related articles together under appropriate categories/trends. You may change existing headings if new information arrives:`;
+Provide a grouping of post and topic. Choose the most appropriate topic from the list of available topics for each post.`;
 
   const system = "";
   //const system = "The user is going to provide a list of markdown article summaries. You are CmdrTaco, the editor of slashdot. you know when slasdhot summaries multiple related articles? You're doing that.";
@@ -284,8 +371,9 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   let markdowns = '';
   let new_posts = '';
 
-  const allArticles = [];
+  let allArticles = [];
   for (const feed of feedsdata) {
+    
     //console.log('feed', feed);
     const feedArticles = await feeds.getFeedArticles(client, feed.name);
     if (!feedArticles) {
@@ -296,20 +384,29 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
     allArticles.push(...feedArticles);
 
   }
+  allArticles = _.shuffle(allArticles);
+
+  const categories = await getCategories(allArticles);
+  /*
+  const categories = [
+    'Artificial Intelligence',
+    'Machine Learning',
+    'Programming',
+    'Technology',
+    'Social Media',
+    'Video Games',
+    'Super Cool Wildcard'
+  ];
+  */
+  console.log('categories', categories);
 
   logger.info('total articles', allArticles.length);
+
   const chunkedArticles = _.chunk(allArticles, 3);
   let article_groups = {};
   let i = 0;
   let totalProcessed = 0;
 
-  function formatGroupedPost({summary,article}) {
-    //return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
-    return `### ${article.title}\nArticle url: ${article.link}\n\n`;
-  }
-  function formatIncomingPost({summary,article}) {
-    return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
-  }
   for (const chunk of chunkedArticles) {
     const progress = Math.round((i / chunkedArticles.length) * 100);
     console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
@@ -318,20 +415,21 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
     markdowns += chunk.map(formatIncomingPost)
       .join('\n\n');
 
+    const categories_str = categories.map(c => `- ${c}`).join('\n');
     //console.log('markdowns', markdowns);
     const inputs = {
       markdowns,
-      new_posts
+      categories: categories_str
     }
 
     const functiondata = {
       functions: [],
       available_functions: {}
     };
-      aifunctions.setup_group_or_regroup_article(
-        allArticles,
-        article_groups
-      )(functiondata.functions, functiondata.available_functions);
+    aifunctions.assign_article_to_topic(
+      allArticles,
+      article_groups
+    )(functiondata.functions, functiondata.available_functions);
 
     const output = await get_llm_raw(
       functiondata,
@@ -359,7 +457,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
       idx += 1;
 
     }
-    //console.log('new_posts', new_posts);
+    console.log('new_posts', new_posts);
     //new_posts += output;
 
     totalProcessed += chunk.length;
