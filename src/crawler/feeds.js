@@ -32,6 +32,13 @@ class FeedWriter {
     }));
   }
 
+  async clearFeed() {
+    const articleKeys = await this.client.keys(`aiarticle:${this.name}:*`);
+    await Promise.all(articleKeys.map( async (key, index) => {
+      await this.client.del(key);
+    }));
+  }
+
   async writeFeedMeta(data) {
     const key = 'feed:' + this.name;
     await this.client.set(key, JSON.stringify(data));

@@ -13,7 +13,10 @@ function formatGroupedPost({summary,article}) {
   return `### ${article.title}\nArticle url: ${article.link}\n\n`;
 }
 function formatIncomingPost({summary,article}) {
-  return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
+  return `### ${article.title} [${article.link}]\n\n${summary.summary}\n\n\n`;
+}
+function formatPostNoUrl({summary,article}) {
+  return `### ${article.title}\n\n${summary.summary}\n\n`;
 }
 
 
@@ -87,6 +90,7 @@ async function get_llm_raw(
 
   let sleep = 4;
   let num_tries = 4;
+  let slowtime = 30 * 1000;
   let content = ""
   let last_error;
   let finish_reason;
@@ -123,10 +127,16 @@ async function get_llm_raw(
 
   while ((!finish_reason || finish_reason === 'error' || finish_reason === 'function_call') && (num_tries > 0)) {
     try {
+      last_error = null;
       //console.log('send msges', messages);
       const functions = functiondata.functions;
       const available_functions = functiondata.available_functions;
-      const chatCompletion = await openai.createChatCompletion({
+      const timeouters = new Promise( (resolve) => {
+        setTimeout(() => {
+          resolve({timeout: true});
+        }, slowtime);
+      });
+      const chatCompletionPromise = openai.createChatCompletion({
         model: "gpt-3.5-turbo-16k",
         //stream: true,
         //model: "gpt-3.5-turbo-0613",
@@ -135,6 +145,11 @@ async function get_llm_raw(
         function_call
       });
 
+      const resp = await Promise.race([chatCompletionPromise, timeouters]);
+      if (resp.timeout) throw new Error('timeout after ' + slowtime + 'ms');
+
+
+      const chatCompletion = resp;
       const firstChoice = chatCompletion.data.choices[0];
       const response_message = firstChoice.message;
       const assistant = response_message.content;
@@ -190,10 +205,12 @@ async function get_llm_raw(
       }
       num_tries -= 1;
       last_error = e;
-      logger.info(`[get_llm_raw] sleeping for ${sleep} seconds`);
+      logger.info(`[get_llm_raw] (${num_tries}) sleeping for ${sleep} seconds`);
       finish_reason = 'error';
       await new Promise(r => setTimeout(r, sleep * 1000));
       sleep *= 1.1;
+      logger.info('wtf', ((!finish_reason || finish_reason === 'error' || finish_reason === 'function_call') && (num_tries > 0)));
+  //while ((!finish_reason || finish_reason === 'error' || finish_reason === 'function_call') && (num_tries > 0)) {
     }
   }
 
@@ -235,7 +252,7 @@ async function summarise_url(url, content) {
 
 async function getCategories(articles) {
 
-  const template = `You are going to help me identify topics and trends from my posts. Be an expert, interesting, witty and insightful purveyor and classifier of internet posts. Be specifically aware of interesting trending topics and try to stay away from generic categories as much as possible. Each of these categories should be more like its own newspaper headline, under which all relevant articles will be posted.
+  const template = `Prepare a daily digest of the latest posts on the site. Identify topics and trends.
 
 There are ${articles.length} posts.
 # Posts under consideration (there are ${articles.length} posts in total)
@@ -243,6 +260,12 @@ There are ${articles.length} posts.
 
 Using the existing list of topics and the new posts under consideration, provide a list of 5 topics.
 `;
+
+  const template2 = `Given the provided headlines for a Daily Digest letter:
+
+{categories_str}
+
+Provide a list of 15 topics that encompass the provided headlines and trends.`;
 
   const system = "";
   const examples = []
@@ -255,7 +278,8 @@ Using the existing list of topics and the new posts under consideration, provide
   for (const chunk of chunkedArticles) {
     const progress = Math.round((i / chunkedArticles.length) * 100);
     console.log(`(${progress}%) chunk ${i} of ${chunkedArticles.length}`);
-    console.log('chunk size?!?!?!?!', chunk.length);
+    i += 1;
+    //console.log('chunk size?!?!?!?!', chunk.length);
 
     const functiondata = { functions: [], available_functions: {} };
     const these_categories = [];
@@ -264,7 +288,7 @@ Using the existing list of topics and the new posts under consideration, provide
 
     let markdowns = '';
     //markdowns += `## ${feed.name}\n\n`;
-    markdowns += chunk.map(formatIncomingPost)
+    markdowns += chunk.map(formatPostNoUrl)
       .join('\n\n');
 
     const categories_str = categories.map(c => `- ${c}`).join('\n');
@@ -296,6 +320,26 @@ Using the existing list of topics and the new posts under consideration, provide
     console.log('categories', categories);
 
   }
+
+  const functiondata = { functions: [], available_functions: {} };
+  const these_categories = [];
+  aifunctions.setup_categories_creator( these_categories )(functiondata.functions, functiondata.available_functions);
+  const categories_str = categories.map(c => `- ${c}`).join('\n');
+  const inputs = { categories_str }
+  await get_llm_raw(
+    functiondata,
+    system,
+    template2,
+    examples,
+    inputs,
+    history,
+    {"name":"set_topics"}
+  );
+
+  categories.length = 0;
+  categories = categories.concat(these_categories);
+
+  console.log('categories', categories);
 
   return categories;
 
@@ -386,7 +430,8 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
   }
   allArticles = _.shuffle(allArticles);
 
-  const categories = await getCategories(allArticles);
+  //const categories = await getCategories(allArticles);
+  const categories = ['Cheese'];
   /*
   const categories = [
     'Artificial Intelligence',
@@ -402,7 +447,7 @@ Apple, Google, and Microsoft have all released new phones. They are all the best
 
   logger.info('total articles', allArticles.length);
 
-  const chunkedArticles = _.chunk(allArticles, 3);
+  const chunkedArticles = _.chunk(allArticles, 5);
   let article_groups = {};
   let i = 0;
   let totalProcessed = 0;

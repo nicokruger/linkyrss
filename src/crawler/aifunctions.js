@@ -15,7 +15,7 @@ async function group_or_regroup_article(articles, groups, {article_url, topic}) 
   //console.log('article', article);
   if (!article) {
     logger.error('Could not find article: ' + article_url);
-    logger.error('Urls were: ' + articles.map( (a) => a.article.link).join('\n'));
+    //logger.error('Urls were: ' + articles.map( (a) => a.article.link).join('\n'));
     return 'Stop making up urls: ' + article_url + ' does not exist.';
   }
   // check if the item exists anywhere else and remove it

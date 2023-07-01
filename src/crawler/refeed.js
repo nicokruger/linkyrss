@@ -159,6 +159,7 @@ app.listen(PORT, async () => {
   const scheduleTimeSeconds = 60 * 60;
 
   const feedwriter = new feeds.FeedWriter('Test', client, queues);
+  await feedwriter.clearFeed();
   summary.summariseFeeds(feedwriter, client, config.feeds);
   feedwriter.writeFeedMeta({
     summary:true,
