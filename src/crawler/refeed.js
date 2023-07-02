@@ -104,7 +104,7 @@ function createNewFeed(meta, feedUrl, articles) {
       description: article.description,
       content: article.content,
       //author: article['atom:author'] ?? article.author,
-      date: new Date(article.pubDate),
+      date: new Date(article.article.pubDate),
       category: [
         {
           name: 'Cheese',
@@ -130,7 +130,7 @@ app.get('/feed/:name', async (req, res) => {
   }
 
   const feedInfo = JSON.parse(await client.get(key));
-  const feedArticles = await feeds.getFeed(req.params.name);
+  const feedArticles = await feeds.getFeed(client, req.params.name);
   const newFeed = createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
   const atomXml = newFeed.atom1();
 
@@ -164,9 +164,9 @@ app.listen(PORT, async () => {
   const queues = await index.getQueues(client);
 
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
-  const scheduleTimeSeconds = 60 * 60;
+  const scheduleTimeSeconds = 2 * 60 * 60;
 
-  /*
+	/*
   const feedwriter = new feeds.FeedWriter('Test', client, queues);
   await feedwriter.clearFeed();
   summary.summariseFeeds(feedwriter, client, config.feeds);
@@ -179,7 +179,6 @@ app.listen(PORT, async () => {
   });
   */
 
-  /*
   while (true) {
 
     for (const feed of config.feeds) {
@@ -188,7 +187,6 @@ app.listen(PORT, async () => {
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }
-  */
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 

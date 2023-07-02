@@ -4,3 +4,4 @@ openai
 matplotlib
 tiktoken
 plotly
+redis

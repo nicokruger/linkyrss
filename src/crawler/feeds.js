@@ -113,4 +113,4 @@ module.exports.getFeedArticles = async function (client, feedName) {
 }
 
 module.exports.FeedWriter = FeedWriter;
-
+module.exports.getFeed = getFeed;

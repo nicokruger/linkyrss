@@ -3,7 +3,10 @@ import pandas as pd
 import tiktoken
 import redis
 import json
-client = redis.StrictRedis(host='localhost', port=6379, db=0)
+import os
+
+redis_host = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+client = redis.from_url(redis_host)
 
 article_keys = client.keys("article:*")
 summary_keys = client.keys("summary:*")
