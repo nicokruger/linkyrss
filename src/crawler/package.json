@@ -18,6 +18,7 @@
     "jsdom": "^22.1.0",
     "langchain": "^0.0.97",
     "lodash": "^4.17.21",
+    "marked": "^5.1.0",
     "p-limit": "^2.3.0",
     "puppeteer": "^20.7.2",
     "redis": "^4.6.7",

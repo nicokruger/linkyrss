@@ -1,3 +1,4 @@
+const { marked } = require('marked');
 const _ = require('lodash');
 const summarise = require('./summarise');
 const { Feed, Category } = require('feed');
@@ -72,22 +73,24 @@ class FeedWriter {
 
 
     articles.forEach(({title, summary, date, links, theme}) => {
-      let newArticle = `## Theme
-${theme}
+      const md = `${summary}
 
-${summary}
+## Theme
+${theme}
 
 ## Links
 ${links.map( link => `- [${link.title}](${link.link})`).join('\n')}
-      `;
+`
+      const html = marked.parse(md);
+      console.log(html);
       const narticle = {
         title,
         guid: date + '_summary',
         link: 'https://www.inmytree.co.za/' + title,
         description: 'My AI summary of ' + title,
         date: new Date(date),
-        content: newArticle,
-        summary: newArticle,
+        content: html,
+        summary: html,
         isSummary: true
       }
 
