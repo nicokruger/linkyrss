@@ -4,7 +4,9 @@ import openai
 import numpy as np
 import pandas as pd
 import pprint
+import json
 
+clustered_posts = []
 # load data
 datafile_path = "./embeddings.csv"
 
@@ -53,6 +55,9 @@ total_posts = 0
 rev_per_cluster = 5
 
 for i in range(n_clusters):
+    cluster_posts = []
+    cluster_theme = ""
+
     print(f"Cluster {i} Theme:", end=" ")
 
     posts = "\n".join(
@@ -81,7 +86,8 @@ for i in range(n_clusters):
                 frequency_penalty=0,
                 presence_penalty=0,
             )
-            print(response["choices"][0]["message"]["content"])
+            cluster_theme = response["choices"][0]["message"]["content"]
+            print(cluster_theme)
         except Exception as e:
             if num_tries == 0:
                 raise e
@@ -93,14 +99,26 @@ for i in range(n_clusters):
     #sample_cluster_rows = df[df.Cluster == i].sample(rev_per_cluster, random_state=42)
     sample_cluster_rows = df[df.Cluster == i]
     num_rows = sample_cluster_rows.shape[0]
+
     for j in range(num_rows):
         #print(sample_cluster_rows.Score.values[j], end=", ")
         print(sample_cluster_rows.title.values[j], end=":   ")
         #print(sample_cluster_rows.summary.links[j], end=",  ")
         #print(sample_cluster_rows.summary.str[:1000000000].values[j])
         print("\n")
+
+        cluster_posts.append(sample_cluster_rows.link.values[j])
         total_posts += 1
+
+    clustered_posts.append({
+        "posts": cluster_posts,
+        "theme": cluster_theme
+    })
 
     print("-" * 100)
 
 print(f"Total posts: {total_posts}")
+
+with open("clustered_posts.json", "w") as f:
+    json.dump(clustered_posts, f)
+

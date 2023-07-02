@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const summarise = require('./summarise');
 const { Feed, Category } = require('feed');
 
@@ -23,12 +24,15 @@ class FeedWriter {
     this.client = client;
   }
 
-  async writeArticle(idx, title, articles) {
+  async writeArticle(idx, title, content, links, theme) {
     const key = `aiarticle:${this.name}:${idx}`;
     await this.client.set(key, JSON.stringify({
       idx,
+      date: new Date(),
       title,
-      articles
+      content,
+      links,
+      theme
     }));
   }
 
@@ -51,34 +55,39 @@ class FeedWriter {
       return aiarticle;
     })));
     const articles = (await Promise.all(aiArticles.map( async (aiarticle, index) => {
-      const {title, articles} = aiarticle;
-      const summary = await summarise.prepareAiArticle(
-        this.client,
-        title,
-        JSON.parse(articles)
-      );
-      return {title, summary};
+      const {title, content, date, links, theme} = aiarticle;
+      const summary = content;
+      return {title, summary, date, links, theme};
     }))).filter( article => article !== null);
 
+    const updated = _.max(articles.map( article => article.date));
     const feed = new Feed({
       title: '[AI] ' + this.name,
       description: "AI for " + this.name,
       id: this.name,
       link: 'https://www.inmytree.co.za/' + this.name,
-      updated: new Date(),
+      updated: new Date(updated),
       generator: 'rss-atom-feed-processor',
     });
 
 
-    articles.forEach(({title, summary}) => {
+    articles.forEach(({title, summary, date, links, theme}) => {
+      let newArticle = `## Theme
+${theme}
+
+${summary}
+
+## Links
+${links.map( link => `- [${link.title}](${link.link})`).join('\n')}
+      `;
       const narticle = {
         title,
-        guid: title + '_summary',
+        guid: date + '_summary',
         link: 'https://www.inmytree.co.za/' + title,
         description: 'My AI summary of ' + title,
-        date: new Date(),
-        content: summary,
-        summary: summary,
+        date: new Date(date),
+        content: newArticle,
+        summary: newArticle,
         isSummary: true
       }
 

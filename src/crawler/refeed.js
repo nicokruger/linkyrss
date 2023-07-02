@@ -166,7 +166,6 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 60 * 60;
 
-  /*
   const feedwriter = new feeds.FeedWriter('Test', client, queues);
   await feedwriter.clearFeed();
   summary.summariseFeeds(feedwriter, client, config.feeds);
@@ -177,8 +176,8 @@ app.listen(PORT, async () => {
       description:'Test',
     }
   });
-  */
 
+  /*
   while (true) {
 
     for (const feed of config.feeds) {
@@ -187,6 +186,7 @@ app.listen(PORT, async () => {
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }
+  */
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
