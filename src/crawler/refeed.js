@@ -17,7 +17,9 @@ if (!configFile) {
   process.exit(1);
 }
 
-async function parseAndStoreFeed(queues, feed, n = 500) {
+async function parseAndStoreFeed(feed, n) {
+  const queues = await index.getQueues(client);
+
   const {url,name} = feed;
   try {
     const articles = await feedparser.parse(url, {
@@ -26,10 +28,11 @@ async function parseAndStoreFeed(queues, feed, n = 500) {
 
     const latestArticles = articles.slice(0, n);
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
-    const children = [];
-    const {q} = queues;
 
-    const queue = q;
+    if (!latestArticles.length) {
+      logger.warn('there are no jobs for feed ' + feed.name);
+      return;
+    }
 
 
     let first = true;
@@ -52,29 +55,10 @@ async function parseAndStoreFeed(queues, feed, n = 500) {
       }
 
       //const a = await queue.refeed({name, article, index}).run();
-
-      const chain = queue.chain([
-        queue.crawl({name, article, index}),
-        queue.summary()
-      ]);
-      children.push(chain);
+      queues.pageCrawlerQueue.add('pageCrawler', { name, article, index });
 
     };
     //console.log('children length', children.length);
-
-    if (!children.length) {
-      logger.warn('there are no jobs for feed ' + feed.name);
-      return;
-    }
-
-    logger.info(`[${feed.name}] start ${children.length} jobs`);
-
-    //for (const c of children) {
-    //  c.run();
-    //}
-    const id = await queue.group(children).run();
-
-    await client.set(`jobid:${id}`, url);
 
     //const newFeedUrl = 'http://localhost:3000';
     //const newFeed = createNewFeed(newFeedUrl, latestArticles);
@@ -183,7 +167,7 @@ app.listen(PORT, async () => {
 
     for (const feed of config.feeds) {
       logger.info(`[REFEED] ${feed.name}`);
-      parseAndStoreFeed(queues, feed).catch(logger.info, 1000);
+      queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }
@@ -192,3 +176,4 @@ app.listen(PORT, async () => {
 
 
 
+module.exports.parseAndStoreFeed = parseAndStoreFeed;

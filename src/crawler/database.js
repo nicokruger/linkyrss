@@ -47,6 +47,10 @@ class FilesystemDatabase {
     let encodedUrl = Buffer.from(sanitizedUrl).toString('base64');
     // remove non-alphanumeric characters
     encodedUrl = encodedUrl.replace(/[^a-zA-Z0-9]/g, '_');
+
+    // limit to 240 characters
+    encodedUrl = encodedUrl.substring(0, 240);
+
     // return the filename
     return `${this.databaseDir}/${encodedUrl}.${suffix}`;
   }
