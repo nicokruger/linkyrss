@@ -68,17 +68,16 @@ let __queues = null;
 module.exports.getQueues = async (client) => {
   if (__queues) return __queues;
 
-  const connection = new IORedis(redisUrl);
-  const connectionOpts = {
-    connection,
+  const opts = {
+	  connection:new IORedis(redisUrl)
   }
 
   const db = new database.FilesystemDatabase("./work");
 
-  const rssFeedQueue = new Queue('feed', connectionOpts);
-  const pageCrawlerQueue = new Queue('pageCrawler', connectionOpts);
-  const summarizerQueue = new Queue('summarizer', connectionOpts);
-  const flowProducer = new FlowProducer({}, connection);
+  const rssFeedQueue = new Queue('feed', opts);
+  const pageCrawlerQueue = new Queue('pageCrawler', opts);
+  const summarizerQueue = new Queue('summarizer', opts);
+  const flowProducer = new FlowProducer(opts);
 
   __queues = {
     rssFeedQueue,
@@ -99,7 +98,7 @@ module.exports.getQueues = async (client) => {
     await refeed.parseAndStoreFeed(feed, n);
     */
 
-  }, { connection: connectionOpts });
+  }, opts);
 
   new Worker('pageCrawler', async (job) => {
     //console.log('pageCrawler', job.data);
@@ -112,7 +111,7 @@ module.exports.getQueues = async (client) => {
     //await summarizerQueue.add('summarize', { url, article });
   }, {
     concurrency: 4,
-    connection: connectionOpts
+    connection: opts.connection
   });
 
   new Worker('summarizer', async (job) => {
@@ -132,7 +131,7 @@ module.exports.getQueues = async (client) => {
     await client.set(key, JSON.stringify(summary));
 
   }, {
-    connection: connectionOpts,
+    connection: opts.connection,
     concurrency: 10,
     attempts: 5,
     backoff: {
@@ -141,6 +140,7 @@ module.exports.getQueues = async (client) => {
     }
   });
 
+	console.log('LAL');
   return __queues;
 
   /*

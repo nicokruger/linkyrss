@@ -192,6 +192,7 @@ app.listen(PORT, async () => {
   });
   */
 
+	/*
   while (true) {
 
     for (const feed of config.feeds) {
@@ -201,6 +202,7 @@ app.listen(PORT, async () => {
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }
+  */
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
