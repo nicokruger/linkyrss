@@ -15,9 +15,6 @@ const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 //const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
-const connectionOpts = {
-  url: redisUrl,
-}
 const express = require('express');
 
 
@@ -69,6 +66,10 @@ let __queues = null;
 
 module.exports.getQueues = async (client) => {
   if (__queues) return __queues;
+
+  const connectionOpts = {
+    redis: client
+  }
 
   const db = new database.FilesystemDatabase("./work");
 
