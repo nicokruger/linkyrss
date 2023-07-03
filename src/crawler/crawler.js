@@ -163,7 +163,7 @@ class Crawler {
     const salt = new Date().getTime();
     const urlFilename = Buffer.from(url).toString('base64')
       .replace(/[^a-zA-Z0-9]/g, '_')
-      .substring(0,240)
+      .substring(0,210)
     return os.tmpdir() + '/' + urlFilename + '_' + salt;
   }
 
