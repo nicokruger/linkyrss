@@ -49,7 +49,7 @@ class FilesystemDatabase {
     encodedUrl = encodedUrl.replace(/[^a-zA-Z0-9]/g, '_');
 
     // limit to 240 characters
-    encodedUrl = encodedUrl.substring(0, 240);
+    encodedUrl = encodedUrl.substring(0, 210);
 
     // return the filename
     return `${this.databaseDir}/${encodedUrl}.${suffix}`;

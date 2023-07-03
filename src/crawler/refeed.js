@@ -1,3 +1,4 @@
+const _ = require('lodash');
 const feedparser = require('feedparser-promised');
 const { Feed, Category } = require('feed');
 const redis = require('redis');
@@ -26,7 +27,7 @@ async function parseAndStoreFeed(feed, n) {
       addmeta: true,
     });
 
-    const latestArticles = articles.slice(0, n);
+    const latestArticles = _.shuffle(articles.slice(0, n));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
     if (!latestArticles.length) {
