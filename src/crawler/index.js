@@ -68,8 +68,9 @@ let __queues = null;
 module.exports.getQueues = async (client) => {
   if (__queues) return __queues;
 
+  const connection = new IORedis(redisUrl);
   const connectionOpts = {
-    connection: new IORedis(redisUrl),
+    connection,
   }
 
   const db = new database.FilesystemDatabase("./work");
@@ -77,7 +78,7 @@ module.exports.getQueues = async (client) => {
   const rssFeedQueue = new Queue('feed', connectionOpts);
   const pageCrawlerQueue = new Queue('pageCrawler', connectionOpts);
   const summarizerQueue = new Queue('summarizer', connectionOpts);
-  const flowProducer = new FlowProducer(connectionOpts);
+  const flowProducer = new FlowProducer({}, connection);
 
   __queues = {
     rssFeedQueue,
