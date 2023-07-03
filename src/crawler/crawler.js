@@ -161,7 +161,9 @@ class Crawler {
     // base64 encode the url
     // replace all non-alphanumeric characters with _
     const salt = new Date().getTime();
-    const urlFilename = Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '_');
+    const urlFilename = Buffer.from(url).toString('base64')
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .substring(0,240)
     return os.tmpdir() + '/' + urlFilename + '_' + salt;
   }
 
