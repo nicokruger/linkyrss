@@ -11,6 +11,10 @@ class FilesystemDatabase {
 
   }
 
+  async pageExists(url) {
+    const fileName = this.getFilenameFromUrl(url, 'json');
+    return fs.existsSync(fileName);
+  }
   async getPage(url) {
     const fileName = this.getFilenameFromUrl(url, 'json');
     if (fs.existsSync(fileName)) {
