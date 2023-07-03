@@ -2,6 +2,7 @@
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
 const summarise = require('./summarise.js');
+const IORedis = require('ioredis');
 const redis = require('redis');
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const client = redis.createClient({url:redisUrl});
@@ -68,7 +69,7 @@ module.exports.getQueues = async (client) => {
   if (__queues) return __queues;
 
   const connectionOpts = {
-    redis: client
+    connection: new IORedis(redisUrl),
   }
 
   const db = new database.FilesystemDatabase("./work");
