@@ -17,46 +17,56 @@ class Crawler {
   async crawl() {
     const browser = await puppeteer.launch({headless: 'new', args: ['--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'] });
     const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0');
+    try {
 
-    logger.debug(`[${this.url}] start puppeteer`);
-    await page.goto(this.url, {
-      waitUntil: 'networkidle2',
-      timeout: 60000
-    });
-    await this.waitTillHTMLRendered(page);
-    logger.debug(`[${this.url}] html ready`);
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0');
 
-    const content = await page.content();
+      logger.debug(`[${this.url}] start puppeteer`);
+      await page.goto(this.url, {
+        waitUntil: 'networkidle2',
+        timeout: 60000
+      });
+      await this.waitTillHTMLRendered(page);
+      logger.debug(`[${this.url}] html ready`);
 
-    logger.debug(`[${this.url}] extract media`);
-    await this.extractMedia(page);
-    const links = await this.extractLinks(page);
-    logger.debug(`[${this.url}] get readable content`);
-    const readableArticle = await this.extractReadableContent(content);
-    logger.debug(`[${this.url}] get pandoc content`);
-    const pandocCrawl = await this.extractPandoc(page, content);
+      const content = await page.content();
 
-    logger.debug(`[${this.url}] take screenshot`);
-    const screenshotFilename = await this.takeScreenshot(page);
-    const screenshot = await fs.readFile(screenshotFilename);
+      logger.debug(`[${this.url}] extract media`);
+      await this.extractMedia(page);
+      const links = await this.extractLinks(page);
+      logger.debug(`[${this.url}] get readable content`);
+      const readableArticle = await this.extractReadableContent(content);
+      logger.debug(`[${this.url}] get pandoc content`);
+      const pandocCrawl = await this.extractPandoc(page, content);
 
-    await fs.unlink(screenshotFilename);
+      logger.debug(`[${this.url}] take screenshot`);
+      const screenshotFilename = await this.takeScreenshot(page);
+      const screenshot = await fs.readFile(screenshotFilename);
 
-    await browser.close();
+      await fs.unlink(screenshotFilename);
 
-    logger.debug(`[${this.url}] done`);
+      await page.close();
+      await browser.close();
 
-    return {
-      url: this.url,
-      content,
-      media: this.media,
-      readableArticle,
-      pandocCrawl,
-      screenshot,
-      links
-    };
+      logger.debug(`[${this.url}] done`);
+      
 
+      return {
+        url: this.url,
+        content,
+        media: this.media,
+        readableArticle,
+        pandocCrawl,
+        screenshot,
+        links
+      };
+
+
+    } catch (e) {
+      await page.close();
+      await browser.close();
+      throw e;
+    }
   }
 
   async waitTillHTMLRendered(page, timeout = 60000) {

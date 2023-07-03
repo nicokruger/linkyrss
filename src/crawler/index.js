@@ -78,6 +78,8 @@ module.exports.getQueues = async (client) => {
   const rssFeedQueue = new Queue('feed', connectionOpts);
   const pageCrawlerQueue = new Queue('pageCrawler', connectionOpts);
   const summarizerQueue = new Queue('summarizer', connectionOpts);
+  const clustererQueue = new Queue('clusterer', connectionOpts);
+  const aiWriterQueue = new Queue('aiWriter', connectionOpts);
   const flowProducer = new FlowProducer({}, connection);
 
   __queues = {
