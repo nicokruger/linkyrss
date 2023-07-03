@@ -35,7 +35,9 @@ async function parseAndStoreFeed(feed, n) {
     }
 
 
+    const children = [];
     let first = true;
+    let i = 0;
     for (const article of latestArticles) {
       const index = (article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id);
       if (first) {
@@ -55,9 +57,36 @@ async function parseAndStoreFeed(feed, n) {
       }
 
       //const a = await queue.refeed({name, article, index}).run();
-      queues.pageCrawlerQueue.add('pageCrawler', { name, article, index });
+      //queues.pageCrawlerQueue.add('pageCrawler', { name, article, index });
+      const url = article.link;
+    //rssFeedQueue,
+    //pageCrawlerQueue,
+    //summarizerQueue,
+
+      i++;
+      children.push({
+        name: 'summarize',
+        queueName: queues.summarizerQueue.name,
+        data: { feed: feed.name, article, index, url },
+        children: [
+          {
+            name: 'pageCrawler',
+            queueName: queues.pageCrawlerQueue.name,
+            data: { feed: feed.name, article, index, url },
+          },
+        ]
+      });
+
 
     };
+
+    const flow = await queues.flowProducer.add({
+      name: feed.name,
+      queueName: queues.rssFeedQueue.name,
+      data: { feed: feed.name, time: new Date().toISOString(), total: latestArticles.length },
+      children
+    });
+
     //console.log('children length', children.length);
 
     //const newFeedUrl = 'http://localhost:3000';
@@ -167,7 +196,8 @@ app.listen(PORT, async () => {
 
     for (const feed of config.feeds) {
       logger.info(`[REFEED] ${feed.name}`);
-      queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+      parseAndStoreFeed(feed, 1000);
+      //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
   }

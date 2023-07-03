@@ -21,7 +21,7 @@ class Crawler {
 
     logger.debug(`[${this.url}] start puppeteer`);
     await page.goto(this.url, {
-      waitUntil: 'load',
+      waitUntil: 'networkidle2',
       timeout: 60000
     });
     await this.waitTillHTMLRendered(page);
@@ -29,6 +29,7 @@ class Crawler {
 
     const content = await page.content();
 
+    logger.debug(`[${this.url}] extract media`);
     await this.extractMedia(page);
     const links = await this.extractLinks(page);
     logger.debug(`[${this.url}] get readable content`);
@@ -36,6 +37,7 @@ class Crawler {
     logger.debug(`[${this.url}] get pandoc content`);
     const pandocCrawl = await this.extractPandoc(page, content);
 
+    logger.debug(`[${this.url}] take screenshot`);
     const screenshotFilename = await this.takeScreenshot(page);
     const screenshot = await fs.readFile(screenshotFilename);
 
@@ -69,7 +71,7 @@ class Crawler {
       let html = await page.content();
       let currentHTMLSize = html.length; 
 
-      let bodyHTMLSize = await page.evaluate(() => document.body.innerHTML.length);
+      let bodyHTMLSize = await page.evaluate(() => document.body?.innerHTML.length);
 
       logger.debug('last: ', lastHTMLSize, ' <> curr: ', currentHTMLSize, " body html size: ", bodyHTMLSize);
 

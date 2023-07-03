@@ -10,7 +10,7 @@ const logger = createLogger(module);
 const database = require('./database.js');
 const refeed = require('./refeed.js');
 
-const { Queue, Worker, QueueScheduler, QueueEvents } = require('bullmq');
+const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bullmq');
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 //const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -72,23 +72,29 @@ module.exports.getQueues = async (client) => {
 
   const db = new database.FilesystemDatabase("./work");
 
-  const rssFeedQueue = new Queue('rssFeed', connectionOpts);
+  const rssFeedQueue = new Queue('feed', connectionOpts);
   const pageCrawlerQueue = new Queue('pageCrawler', connectionOpts);
   const summarizerQueue = new Queue('summarizer', connectionOpts);
+  const flowProducer = new FlowProducer(connectionOpts);
 
   __queues = {
     rssFeedQueue,
     pageCrawlerQueue,
-    summarizerQueue
+    summarizerQueue,
+    flowProducer
   }
 
 
   // Setup the workers
-  new Worker('rssFeed', async (job) => {
+  new Worker('feed', async (job) => {
+    const { feed, total } = job.data;
+    logger.info(`[${feed}] ${total} articles`);
+    /*
     const { feed, n } = job.data;
     console.log('rssFeed', job.data);
 
     await refeed.parseAndStoreFeed(feed, n);
+    */
 
   }, { connection: connectionOpts });
 
@@ -100,7 +106,7 @@ module.exports.getQueues = async (client) => {
     const url = article.link;
     await crawl(db, url);
 
-    await summarizerQueue.add('summarize', { url, article });
+    //await summarizerQueue.add('summarize', { url, article });
   }, {
     concurrency: 4,
     connection: connectionOpts
