@@ -160,6 +160,8 @@ module.exports.getQueues = async (client) => {
     const relativeToRoot = path.join(__dirname, '..');
     const clustererDir = path.join(relativeToRoot, 'clusterer');
     await python.runPython(clustererDir, 'embeddings.py', [inFileName, outFileName]);
+  }, {
+    connection: opts.connection,
   });
 
   new Worker('clusterer', async (job) => {
@@ -168,6 +170,8 @@ module.exports.getQueues = async (client) => {
     const relativeToRoot = path.join(__dirname, '..');
     const clustererDir = path.join(relativeToRoot, 'clusterer');
     await python.runPython(clustererDir, 'cluster.py', [inFileName, outPostsName]);
+  }, {
+    connection: opts.connection,
   });
 
   new Worker('aiWriter', async (job) => {
@@ -194,7 +198,8 @@ module.exports.getQueues = async (client) => {
 
     //const childrenValues = await job.getChildrenValues();
 
-    throw new Error('kek');
+  }, {
+    connection: opts.connection,
   });
 
 	console.log('LAL');
