@@ -10,6 +10,7 @@ async function runPython(workingdir, script, args) {
     cwd: workingdir,
     env: {
       OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+      REDIS_URL: process.env.REDIS_URL,
     }
   });
   await new Promise((resolve, reject) => {
