@@ -1,4 +1,5 @@
 
+const path = require('path');
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
 const summarise = require('./summarise.js');
@@ -9,7 +10,10 @@ const client = redis.createClient({url:redisUrl});
 const createLogger = require('./logger');
 const logger = createLogger(module);
 const database = require('./database.js');
+const python = require('./python.js');
 const refeed = require('./refeed.js');
+const cluster = require('./cluster.js');
+const feeds = require('./feeds.js');
 
 const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bullmq');
 const { createBullBoard } = require('@bull-board/api');
@@ -39,6 +43,10 @@ async function start() {
       new BullAdapter(queues.rssFeedQueue),
       new BullAdapter(queues.pageCrawlerQueue),
       new BullAdapter(queues.summarizerQueue),
+      new BullAdapter(queues.embeddingQueue),
+      new BullAdapter(queues.clustererQueue),
+      new BullAdapter(queues.aiWriterQueue),
+
       //new BullMQAdapter(queueMQ)
     ],
     serverAdapter: serverAdapter,
@@ -77,6 +85,7 @@ module.exports.getQueues = async (client) => {
   const rssFeedQueue = new Queue('feed', opts);
   const pageCrawlerQueue = new Queue('pageCrawler', opts);
   const summarizerQueue = new Queue('summarizer', opts);
+  const embeddingQueue = new Queue('embedding', opts);
   const clustererQueue = new Queue('clusterer', opts);
   const aiWriterQueue = new Queue('aiWriter', opts);
   const flowProducer = new FlowProducer(opts);
@@ -85,7 +94,10 @@ module.exports.getQueues = async (client) => {
     rssFeedQueue,
     pageCrawlerQueue,
     summarizerQueue,
-    flowProducer
+    flowProducer,
+    embeddingQueue,
+    clustererQueue,
+    aiWriterQueue
   }
 
 
@@ -104,8 +116,8 @@ module.exports.getQueues = async (client) => {
 
   new Worker('pageCrawler', async (job) => {
     //console.log('pageCrawler', job.data);
-    const { article, name, index } = job.data;
-    await client.set(`article:${name}:${index}`, JSON.stringify(article));
+    const { article, feed, index } = job.data;
+    await client.set(`article:${feed}:${index}`, JSON.stringify(article));
 
     const url = article.link;
     await crawl(db, url);
@@ -140,6 +152,49 @@ module.exports.getQueues = async (client) => {
       type: 'exponential', // or 
       delay: 1200,
     }
+  });
+
+  new Worker('embedding', async (job) => {
+    const {inFileName, outFileName} = job.data;
+    logger.debug(`embedding ${inFileName} -> ${outFileName}`);
+    const relativeToRoot = path.join(__dirname, '..');
+    const clustererDir = path.join(relativeToRoot, 'clusterer');
+    await python.runPython(clustererDir, 'embeddings.py', [inFileName, outFileName]);
+  });
+
+  new Worker('clusterer', async (job) => {
+    const {inFileName, outPostsName} = job.data;
+    logger.debug(`clustering ${inFileName} -> ${outPostsName}`);
+    const relativeToRoot = path.join(__dirname, '..');
+    const clustererDir = path.join(relativeToRoot, 'clusterer');
+    await python.runPython(clustererDir, 'cluster.py', [inFileName, outPostsName]);
+  });
+
+  new Worker('aiWriter', async (job) => {
+    const { articles, feed, outPostsName } = job.data;
+    logger.debug(`aiWriter: ${articles.length} articles, ${feed} -> ${outPostsName}`);
+
+    const feedwriter = new feeds.FeedWriter(feed, client);
+    await feedwriter.clearFeed();
+
+    const clusteredPosts = JSON.parse(fs.readFileSync(outPostsName, 'utf8').toString());
+    await summarise.aiWriter(
+      clusteredPosts,
+      feedwriter,
+      client
+    );
+    await feedwriter.writeFeedMeta({
+      summary:true,
+      meta:{
+        title:'Test',
+        description:'Test',
+      }
+    });
+
+
+    //const childrenValues = await job.getChildrenValues();
+
+    throw new Error('kek');
   });
 
 	console.log('LAL');

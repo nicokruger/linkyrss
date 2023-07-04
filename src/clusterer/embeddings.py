@@ -4,12 +4,25 @@ import tiktoken
 import redis
 import json
 import os
+import sys
 
 redis_host = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 client = redis.from_url(redis_host)
 
-article_keys = client.keys("article:*")
-summary_keys = client.keys("summary:*")
+articles_file = sys.argv[1]
+if articles_file is None:
+    print("Usage: python embeddings.py <articles_file> <out_file>")
+    sys.exit(1)
+article_ids = open(articles_file).readlines()
+article_ids = [x.strip() for x in article_ids]
+
+out_file = sys.argv[2]
+if out_file is None:
+    print("Usage: python embeddings.py <articles_file> <out_file>")
+    sys.exit(1)
+
+article_keys = ["article:" + x for x in article_ids]
+summary_keys = ["summary:" + x for x in article_ids]
 
 titles = []
 summaries = []
@@ -61,4 +74,4 @@ print(len(df))
 
 # This may take a few minutes
 df["embedding"] = df.combined.apply(lambda x: get_embedding(x, engine=embedding_model))
-df.to_csv("embeddings.csv")
+df.to_csv(out_file)
