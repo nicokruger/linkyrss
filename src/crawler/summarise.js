@@ -1,3 +1,4 @@
+const os = require('os');
 const fs = require('fs');
 const { ChatOpenAI } = require('langchain/chat_models/openai');
 const { PromptTemplate }  = require( "langchain/prompts");
@@ -7,6 +8,7 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
 const feeds = require('./feeds.js');
+const index = require('./index.js');
 const aifunctions = require('./aifunctions.js');
 
 function formatGroupedPost({summary,article}) {
@@ -314,8 +316,62 @@ ${summary.summary}
 
 
 };
-async function summariseFeeds(feedwriter, client, feedsdata) {
-  const clusteredPosts = JSON.parse(fs.readFileSync('clustered_posts.json'));
+
+async function startSummariseFeeds(client) {
+  const queues = await index.getQueues(client);
+  const dateFrom = new Date();
+  // 4 hours ago
+  dateFrom.setHours(dateFrom.getHours() - 4);
+  //dateFrom.setDate(dateFrom.getDate() - 1);
+
+  //const feedwriter = new feeds.FeedWriter('Test', client, queues);
+  //await feedwriter.clearFeed();
+  /*
+  feedwriter.writeFeedMeta({
+    summary:true,
+    meta:{
+      title:'Test',
+      description:'Test',
+    }
+  });
+  */
+
+
+  let articles = await client.keys('article:*');
+  // filter out articles that are too old
+  articles = articles.filter(a => a.split(':')[2] > dateFrom.toISOString());
+  articles = articles.map( a => a.replace('article:', '') );
+  console.log('have articles', articles.length);
+
+  const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
+  fs.writeFileSync(inFileName, articles.join("\n"));
+  const outFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.csv';
+  const outPostsName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.json';
+  const flow = await queues.flowProducer.add({
+    name: 'aiWriter',
+    queueName: queues.aiWriterQueue.name,
+    data: { feed: 'Test', articles, outPostsName },
+    children: [
+      {
+        name: 'cluster',
+        queueName: queues.clustererQueue.name,
+        data: { inFileName:outFileName, outPostsName },
+        children: [
+          {
+            name: 'embedding',
+            queueName: queues.embeddingQueue.name,
+            data: { inFileName, outFileName },
+          }
+        ]
+      }
+    ]
+  });
+
+}
+async function aiWriter(posts, feedwriter, client) {
+  const config = JSON.parse(fs.readFileSync('config.json').toString());
+  const feedsdata = config.feeds;
+  const clusteredPosts = posts;
 
   const template = `You are a writer that summarises posts from a feed. You will be given a theme and summaries of posts as well as their links.
 
@@ -334,12 +390,23 @@ Write a new article in the theme of {theme} in simple markdown:`;
 
     allArticles.push(...feedArticles);
   }
+  if (!allArticles.length) {
+    throw new Error('no articles');
+  }
 
   for (const cluster of clusteredPosts) {
     const {theme,posts:linksonly} = cluster;
     let markdowns = '';
 
+    console.log('links', linksonly);
+    console.log('all article links', allArticles.map(a => a.article.link));
     const posts = allArticles.filter(a => linksonly.includes(a.article.link));
+    if (!posts.length) {
+      throw new Error('no posts for cluster');
+    }
+    if (posts.length !== linksonly.length) {
+      throw new Error('not all posts found');
+    }
     markdowns += posts.map(formatIncomingPost)
 
     const links = posts.map( p => {
@@ -390,7 +457,8 @@ Write a new article in the theme of {theme} in simple markdown:`;
 }
 
 module.exports.summarise_url = summarise_url;
-module.exports.summariseFeeds = summariseFeeds;
+module.exports.aiWriter = aiWriter;
+module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
 module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;

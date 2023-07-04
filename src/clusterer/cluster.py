@@ -1,14 +1,24 @@
 # imports
+import os
 import time
 import openai
 import numpy as np
 import pandas as pd
 import pprint
 import json
+import sys
 
 clustered_posts = []
 # load data
-datafile_path = "./embeddings.csv"
+datafile_path = sys.argv[1]
+if datafile_path is None:
+    print("Usage: python cluster.py <datafile_path> <out_file>")
+    sys.exit(1)
+
+out_file = sys.argv[2]
+if out_file is None:
+    print("Usage: python cluster.py <datafile_path> <out_file>")
+    sys.exit(1)
 
 df = pd.read_csv(datafile_path)
 df["embedding"] = df.embedding.apply(eval).apply(np.array)  # convert string to numpy array
@@ -17,7 +27,10 @@ matrix.shape
 
 from sklearn.cluster import KMeans
 
-n_clusters = df.shape[0] // 10
+print("shape of matrix:", matrix.shape)
+print("df.shape:", df.shape)
+n_clusters = max(df.shape[0] // 10, 3)
+print("n_clusters:", n_clusters)
 
 kmeans = KMeans(n_clusters=n_clusters, init="k-means++", random_state=42)
 kmeans.fit(matrix)
@@ -30,7 +43,7 @@ from sklearn.manifold import TSNE
 import matplotlib
 import matplotlib.pyplot as plt
 
-tsne = TSNE(n_components=2, perplexity=15, init="random", learning_rate=200)
+tsne = TSNE(n_components=2, perplexity=min(n_clusters-1,15), init="random", learning_rate=200)
 vis_dims2 = tsne.fit_transform(matrix)
 
 x = [x for x, y in vis_dims2]
@@ -119,6 +132,6 @@ for i in range(n_clusters):
 
 print(f"Total posts: {total_posts}")
 
-with open("clustered_posts.json", "w") as f:
+with open(out_file, "w") as f:
     json.dump(clustered_posts, f)
 

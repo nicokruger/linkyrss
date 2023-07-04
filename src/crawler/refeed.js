@@ -180,10 +180,8 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 2 * 60 * 60;
 
-	/*
-  const feedwriter = new feeds.FeedWriter('Test', client, queues);
-  await feedwriter.clearFeed();
-  summary.summariseFeeds(feedwriter, client, config.feeds);
+  summary.startSummariseFeeds(client);
+  /*
   feedwriter.writeFeedMeta({
     summary:true,
     meta:{
@@ -197,7 +195,7 @@ app.listen(PORT, async () => {
 
     for (const feed of config.feeds) {
       logger.info(`[REFEED] ${feed.name}`);
-      parseAndStoreFeed(feed, 1000);
+      parseAndStoreFeed(feed, 10);
       //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
     }
     await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
