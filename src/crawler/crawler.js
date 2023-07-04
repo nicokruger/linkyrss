@@ -228,7 +228,7 @@ class RedisCrawler {
     try {
 
       const alreadyCrawled = await this.client.get(this.getCrawlKey(url));
-      if (alreadyCrawled === 'DONE') {
+      if (alreadyCrawled === 'DONE' && (await this.database.pageExists(url))) {
         logger.debug('URL', url, 'ALREADY CRAWLED');
 
         await this.publishCrawlResult(url);
