@@ -202,7 +202,7 @@ app.listen(PORT, async () => {
 
         for (const feed of config.feeds) {
           logger.info(`[REFEED] ${feed.name}`);
-          parseAndStoreFeed(feed, 10);
+          parseAndStoreFeed(feed, 1000);
           //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
         }
         await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );

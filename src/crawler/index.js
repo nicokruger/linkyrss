@@ -124,7 +124,7 @@ module.exports.getQueues = async (client) => {
 
     //await summarizerQueue.add('summarize', { url, article });
   }, {
-    concurrency: 4,
+    concurrency: 6,
     connection: opts.connection
   });
 
