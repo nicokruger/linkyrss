@@ -178,9 +178,8 @@ app.listen(PORT, async () => {
   const queues = await index.getQueues(client);
 
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
-  const scheduleTimeSeconds = 2 * 60 * 60;
+  const scheduleTimeSeconds = 1 * 60 * 60;
 
-  summary.startSummariseFeeds(client);
   /*
   feedwriter.writeFeedMeta({
     summary:true,
@@ -191,15 +190,25 @@ app.listen(PORT, async () => {
   });
   */
 
-  while (true) {
+  await Promise.all([
+    (async () => {
+      while (true) {
+        await summary.startSummariseFeeds(client);
+        await new Promise( (resolve) => setTimeout(resolve, 4 * 60 * 60 * 1000) );
+      }
+    })(),
+    (async () => {
+      while (true) {
 
-    for (const feed of config.feeds) {
-      logger.info(`[REFEED] ${feed.name}`);
-      parseAndStoreFeed(feed, 10);
-      //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
-    }
-    await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
-  }
+        for (const feed of config.feeds) {
+          logger.info(`[REFEED] ${feed.name}`);
+          parseAndStoreFeed(feed, 10);
+          //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+        }
+        await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
+      }
+    })()
+  ]);
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
