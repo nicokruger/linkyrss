@@ -404,9 +404,9 @@ Write a new article in the theme of {theme} in simple markdown:`;
     if (!posts.length) {
       throw new Error('no posts for cluster');
     }
-    if (posts.length !== linksonly.length) {
-      throw new Error('not all posts found');
-    }
+    //if (posts.length !== linksonly.length) {
+    //  throw new Error('not all posts found');
+    //}
     markdowns += posts.map(formatIncomingPost)
 
     const links = posts.map( p => {

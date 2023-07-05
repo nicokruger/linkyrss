@@ -99,6 +99,24 @@ async function parseAndStoreFeed(feed, n) {
   }
 }
 
+
+function refeedArticles(articles) {
+  const latestArticles = articles.map( ({article,summary}) => {
+    if (summary) {
+      //const newContent = summary.summary + "<br/><br/>" + article.content;
+      //article.content = newContent;
+      //article.summary = `<![CDATA[${summary.summary}<br/><br/>${article.summary}]]>`;
+      //article.summary = "cheese";
+      const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
+      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
+      return article;
+    } else {
+      return null;
+    }
+  }).filter( article => article !== null);
+  return latestArticles;
+}
+
 // Function to create a new Atom feed from the given articles.
 function createNewFeed(meta, feedUrl, articles) {
   const feed = new Feed({
@@ -118,7 +136,7 @@ function createNewFeed(meta, feedUrl, articles) {
       description: article.description,
       content: article.content,
       //author: article['atom:author'] ?? article.author,
-      date: new Date(article.article.pubDate),
+      date: new Date(article.pubDate),
       category: [
         {
           name: 'Cheese',
@@ -144,7 +162,7 @@ app.get('/feed/:name', async (req, res) => {
   }
 
   const feedInfo = JSON.parse(await client.get(key));
-  const feedArticles = await feeds.getFeed(client, req.params.name);
+  const feedArticles = refeedArticles(await feeds.getFeed(client, req.params.name));
   const newFeed = createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
   const atomXml = newFeed.atom1();
 
@@ -190,6 +208,7 @@ app.listen(PORT, async () => {
   });
   */
 
+	/*
   await Promise.all([
     (async () => {
       while (true) {
@@ -209,6 +228,7 @@ app.listen(PORT, async () => {
       }
     })()
   ]);
+  */
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
