@@ -202,7 +202,7 @@ app.listen(PORT, async () => {
     (async () => {
       while (true) {
         await summary.startSummariseFeeds(client);
-        await new Promise( (resolve) => setTimeout(resolve, 4 * 60 * 60 * 1000) );
+        await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
       }
     })(),
     (async () => {
