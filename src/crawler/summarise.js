@@ -373,11 +373,33 @@ async function aiWriter(posts, feedwriter, client) {
   const feedsdata = config.feeds;
   const clusteredPosts = posts;
 
-  const template = `You are a writer that summarises posts from a feed. You will be given a theme and summaries of posts as well as their links.
+  const template = `Given the following article contents:
 
 {markdowns}
 
-Write a new article in the theme of {theme} in simple markdown:`;
+
+I want you to write a Wikipedia "In the news" section paragraph..
+Include references and links to the original content.
+
+For example:
+\`\`\`
+In the news - News and more
+A Slack clone in 5 lines of bash: A minimalist chat system called Suc, built with only five lines of bash, is gaining attention. Suc offers core features like real-time chat, file sharing, access control, automation, integration, data encryption, and user authentication. The simplicity and efficiency of Suc are highlighted compared to other chat systems like Slack and Mattermost. source
+
+Midweek Movie Free Talk: Users on Tildes discuss various movies, including "The Gangster, The Cop, The Devil," where Sylvester Stallone is reportedly planning a US version. Additionally, disappointment with recent Pixar films, particularly "Elemental," is expressed due to weak storytelling and uninspired themes. source
+
+Injection of kidney protein improves working memory in monkeys: A recent study published in the journal Nature Aging reveals that a single injection of the klotho protein improves cognitive function in older monkeys. The protein, naturally produced by the kidney, has been associated with health benefits and better performance in thinking and memory tests in humans. This study paves the way for potential advancements in rejuvenating brain function in older adults. source
+
+Lossy Image Formats: A comprehensive page explores various lossy image formats as alternatives to the de-facto standard JPEG. The examined formats include JPEG 2000, JPEG XR, JPEG XS, JPEG XL, WEBP, FLIF, BPG, HEIF/HEIC, and AVIF. The article discusses their development, features, and patent uncertainties. AVIF is recommended as the best option due to its performance, despite some limitations on mobile browsers. source
+....
+one for each article
+\`\`\`
+
+
+The theme is "{theme}".
+
+Provide simple markdown: `;
+
 
 
   let allArticles = [];
