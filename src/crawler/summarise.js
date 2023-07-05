@@ -85,7 +85,8 @@ async function get_llm_raw(
   examples,
   inputs,
   history = [],
-  function_call = "auto"
+  function_call = "auto",
+  out_prompt = null
 ) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -97,7 +98,7 @@ async function get_llm_raw(
   for (const k in inputs) {
     prompt = prompt.replace(`{${k}}`, inputs[k]);
   }
-  //console.log('prompt', prompt);
+  if (out_prompt) out_prompt.push(prompt);
 
   let sleep = 2;
   let num_tries = 7;
@@ -421,6 +422,7 @@ Write a new article in the theme of {theme} in simple markdown:`;
       theme,
       markdowns,
     }
+    const debug_prompt = [];
     const new_article = await get_llm_raw(
       null,
       "",
@@ -428,6 +430,9 @@ Write a new article in the theme of {theme} in simple markdown:`;
       [],
       inputs,
       [],
+      "auto",
+      debug_prompt
+
       //{"name":"group_or_regroup_article"}
     );
     console.log(new_article);
@@ -446,7 +451,7 @@ Write a new article in the theme of {theme} in simple markdown:`;
     await feedwriter.writeArticle(
       idx,
       title,
-      new_article,
+      new_article + "<br/><pre>" + debug_prompt[0] + "</pre>",
       links,
       theme
     );

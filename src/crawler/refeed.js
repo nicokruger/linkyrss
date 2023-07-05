@@ -198,17 +198,6 @@ app.listen(PORT, async () => {
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 1 * 60 * 60;
 
-  /*
-  feedwriter.writeFeedMeta({
-    summary:true,
-    meta:{
-      title:'Test',
-      description:'Test',
-    }
-  });
-  */
-
-	/*
   await Promise.all([
     (async () => {
       while (true) {
@@ -228,7 +217,6 @@ app.listen(PORT, async () => {
       }
     })()
   ]);
-  */
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
 
