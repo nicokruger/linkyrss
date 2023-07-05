@@ -77,7 +77,10 @@ module.exports.getQueues = async (client) => {
   if (__queues) return __queues;
 
   const opts = {
-	  connection:new IORedis(redisUrl)
+    connection:new IORedis(redisUrl),
+    removeOnComplete: {
+      age: 60 * 60 * 16, // 16 hours
+    }
   }
 
   const db = new database.FilesystemDatabase("./work");
@@ -115,17 +118,15 @@ module.exports.getQueues = async (client) => {
   }, opts);
 
   new Worker('pageCrawler', async (job) => {
-    //console.log('pageCrawler', job.data);
     const { article, feed, index } = job.data;
-    await client.set(`article:${feed}:${index}`, JSON.stringify(article));
 
     const url = article.link;
     await crawl(db, url);
 
     //await summarizerQueue.add('summarize', { url, article });
   }, {
+    ...opts,
     concurrency: 6,
-    connection: opts.connection
   });
 
   new Worker('summarizer', async (job) => {
@@ -145,7 +146,7 @@ module.exports.getQueues = async (client) => {
     await client.set(key, JSON.stringify(summary));
 
   }, {
-    connection: opts.connection,
+    ...opts,
     concurrency: 10,
     attempts: 5,
     backoff: {
@@ -161,7 +162,7 @@ module.exports.getQueues = async (client) => {
     const clustererDir = path.join(relativeToRoot, 'clusterer');
     await python.runPython(clustererDir, 'embeddings.py', [inFileName, outFileName]);
   }, {
-    connection: opts.connection,
+    ...opts,
   });
 
   new Worker('clusterer', async (job) => {
@@ -171,7 +172,7 @@ module.exports.getQueues = async (client) => {
     const clustererDir = path.join(relativeToRoot, 'clusterer');
     await python.runPython(clustererDir, 'cluster.py', [inFileName, outPostsName]);
   }, {
-    connection: opts.connection,
+    ...opts,
   });
 
   new Worker('aiWriter', async (job) => {
@@ -196,73 +197,12 @@ module.exports.getQueues = async (client) => {
     });
 
 
-    //const childrenValues = await job.getChildrenValues();
-
   }, {
-    connection: opts.connection,
+    ...opts,
   });
 
-	console.log('LAL');
   return __queues;
 
-  /*
-  queue.on('task:progress', async (data) => {
-
-    //console.log('progress', data);
-    const jobIdKey = `jobid:${data.id}`;
-    let jobUrl = await client.get(jobIdKey);
-    if (jobUrl) {
-      const percent = data.progress / data.total * 100;
-      const last50Chars = jobUrl.slice(-50);
-      logger.info(`[${last50Chars}] ${percent.toFixed(2)}%`);
-    } else {
-      jobUrl = await client.get(`jobid:${data.uid}`);
-      if (jobUrl) {
-        logger.info('task progress2', data.progress/ data.total);
-      } else {
-      //console.log('cannot find', jobIdKey, data.id, data.uid);
-      }
-
-    }
-  });
-
-  queue.registerTask('crawl', async ({name, article,index}) => {
-    await client.set(`article:${name}:${index}`, JSON.stringify(article));
-
-    const url = article.link;
-    await crawl(db, url);
-
-    return {url,article};
-  });
-
-  queue.registerTask('summary', async ({url,article}) => {
-    const page = await db.getPage(url);
-    const key = `summary:${page.url}`;
-    const alreadyExists = await client.exists(key);
-    if (alreadyExists) return article;
-
-    const summary = await summarise.summarise_url(
-      article.link,
-      page.pandocCrawl.readableArticle.textContent
-    );
-
-    await client.set(key, JSON.stringify(summary));
-
-    return article;
-  });
-
-  queue.on('error',  err => {   // Split task errors and internal errors
-    if (err instanceof Queue.Error) {
-      logger.error(`Error in task "process" function: ${err}`);
-    } else {
-      logger.error(`idoit internal error: ${err}`);
-    }
-  });
-
-  await queue.start();
-
-  return {q:queue};
-  */
 
 }
 

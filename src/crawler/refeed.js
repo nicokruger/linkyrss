@@ -41,6 +41,13 @@ async function parseAndStoreFeed(feed, n) {
     let i = 0;
     for (const article of latestArticles) {
       const index = (article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id);
+      const articleKey = `article:${feed}:${index}`;
+      const articleExists = await client.exists(articleKey);
+      if (articleExists) {
+        logger.debug('article already exists', articleKey);
+        continue;
+      }
+
       if (first) {
         const feedData = {
           meta: article.meta,
@@ -57,14 +64,10 @@ async function parseAndStoreFeed(feed, n) {
         return;
       }
 
-      //const a = await queue.refeed({name, article, index}).run();
-      //queues.pageCrawlerQueue.add('pageCrawler', { name, article, index });
       const url = article.link;
-    //rssFeedQueue,
-    //pageCrawlerQueue,
-    //summarizerQueue,
 
-      i++;
+      await client.set(articleKey, JSON.stringify(article));
+
       children.push({
         name: 'summarize',
         queueName: queues.summarizerQueue.name,
@@ -81,19 +84,13 @@ async function parseAndStoreFeed(feed, n) {
 
     };
 
-    const flow = await queues.flowProducer.add({
+    await queues.flowProducer.add({
       name: feed.name,
       queueName: queues.rssFeedQueue.name,
       data: { feed: feed.name, time: new Date().toISOString(), total: latestArticles.length },
       children
     });
 
-    //console.log('children length', children.length);
-
-    //const newFeedUrl = 'http://localhost:3000';
-    //const newFeed = createNewFeed(newFeedUrl, latestArticles);
-    //console.log(newFeed.atom1());
-    //return newFeed.atom1();
   } catch (error) {
     console.error('Error parsing and storing feed:', error);
   }

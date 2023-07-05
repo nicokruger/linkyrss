@@ -340,7 +340,7 @@ async function startSummariseFeeds(client) {
 
   let articles = await client.keys('article:*');
   // filter out articles that are too old
-  articles = articles.filter(a => a.split(':')[2] > dateFrom.toISOString());
+  articles = articles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
   articles = articles.map( a => a.replace('article:', '') );
   console.log('have articles', articles.length);
 
