@@ -342,7 +342,7 @@ async function startSummariseFeeds(client) {
   // filter out articles that are too old
   articles = articles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
   articles = articles.map( a => a.replace('article:', '') );
-  console.log('have articles', articles.length);
+  logger.debug('ai writer: have articles', articles.length);
 
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
