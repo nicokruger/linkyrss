@@ -36,61 +36,68 @@ async function parseAndStoreFeed(feed, n) {
     }
 
 
-    const children = [];
+
     let first = true;
     let i = 0;
-    for (const article of latestArticles) {
-      const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
-      const articleKey = `article:${feed.name}:${index}`;
-      const alreadyDoneKey = `done:${articleKey}`;
-      const alreadyDone = await client.exists(alreadyDoneKey);
-      if (alreadyDone) {
-        logger.debug('article already exists', articleKey);
-        continue;
-      }
-
-      if (first) {
-        const feedData = {
-          meta: article.meta,
-          ...feed,
+    const chunkedArticles = _.chunk(latestArticles, 20);
+    for (const chunk of chunkedArticles) {
+      const children = [];
+      for (const article of chunk) {
+        const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
+        const articleKey = `article:${feed.name}:${index}`;
+        const alreadyDoneKey = `done:${articleKey}`;
+        const alreadyDone = await client.exists(alreadyDoneKey);
+        if (alreadyDone) {
+          logger.debug('article already exists', articleKey);
+          continue;
         }
-        await client.set(`feed:${name}`, JSON.stringify(feedData));
-        first = false;
-      }
 
-      if (article.link === undefined
-          || article.link === null
-          || article.link === '') {
-        logger.error(feed.name, 'article has no link', article);
-        return;
-      }
+        if (first) {
+          const feedData = {
+            meta: article.meta,
+            ...feed,
+          }
+          await client.set(`feed:${name}`, JSON.stringify(feedData));
+          first = false;
+        }
 
-      const url = article.link;
+        if (article.link === undefined
+            || article.link === null
+            || article.link === '') {
+          logger.error(feed.name, 'article has no link', article);
+          return;
+        }
 
-      await client.set(articleKey, JSON.stringify(article));
+        const url = article.link;
 
-      children.push({
-        name: 'summarize',
-        queueName: queues.summarizerQueue.name,
-        data: { feed: feed.name, article, index, url, articleKey },
-        children: [
-          {
-            name: 'pageCrawler',
-            queueName: queues.pageCrawlerQueue.name,
-            data: { feed: feed.name, article, index, url },
-          },
-        ]
+        await client.set(articleKey, JSON.stringify(article));
+
+        children.push({
+          name: 'summarize',
+          queueName: queues.summarizerQueue.name,
+          data: { feed: feed.name, article, index, url, articleKey },
+          children: [
+            {
+              name: 'pageCrawler',
+              queueName: queues.pageCrawlerQueue.name,
+              data: { feed: feed.name, article, index, url },
+            },
+          ]
+        });
+
+
+      };
+
+      await queues.flowProducer.add({
+        name: feed.name,
+        queueName: queues.rssFeedQueue.name,
+        data: { feed: feed.name, time: new Date().toISOString(), chunkNum:i, total: chunk.length },
+        children
       });
+      i++;
 
 
-    };
-
-    await queues.flowProducer.add({
-      name: feed.name,
-      queueName: queues.rssFeedQueue.name,
-      data: { feed: feed.name, time: new Date().toISOString(), total: latestArticles.length },
-      children
-    });
+    }
 
   } catch (error) {
     console.error('Error parsing and storing feed:', error);

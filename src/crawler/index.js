@@ -108,8 +108,8 @@ module.exports.getQueues = async (client) => {
 
   // Setup the workers
   new Worker('feed', async (job) => {
-    const { feed, total } = job.data;
-    logger.info(`Done [${feed}] ${total} articles`);
+    const { feed, total,chunkNum } = job.data;
+    logger.info(`Done [${feed}] chunk ${chunkNum}, ${total} articles`);
 
     const childrenValues = await job.getChildrenValues();
     for (const articleKey of Object.values(childrenValues)) {
