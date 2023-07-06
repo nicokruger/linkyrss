@@ -36,60 +36,68 @@ async function parseAndStoreFeed(feed, n) {
     }
 
 
-    const children = [];
+
     let first = true;
     let i = 0;
-    for (const article of latestArticles) {
-      const index = (article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id);
-      const articleKey = `article:${feed.name}:${index}`;
-      const articleExists = await client.exists(articleKey);
-      if (articleExists) {
-        logger.debug('article already exists', articleKey);
-        continue;
-      }
-
-      if (first) {
-        const feedData = {
-          meta: article.meta,
-          ...feed,
+    const chunkedArticles = _.chunk(latestArticles, 20);
+    for (const chunk of chunkedArticles) {
+      const children = [];
+      for (const article of chunk) {
+        const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
+        const articleKey = `article:${feed.name}:${index}`;
+        const alreadyDoneKey = `done:${articleKey}`;
+        const alreadyDone = await client.exists(alreadyDoneKey);
+        if (alreadyDone) {
+          logger.debug('article already exists', articleKey);
+          continue;
         }
-        await client.set(`feed:${name}`, JSON.stringify(feedData));
-        first = false;
-      }
 
-      if (article.link === undefined
-          || article.link === null
-          || article.link === '') {
-        logger.error(feed.name, 'article has no link', article);
-        return;
-      }
+        if (first) {
+          const feedData = {
+            meta: article.meta,
+            ...feed,
+          }
+          await client.set(`feed:${name}`, JSON.stringify(feedData));
+          first = false;
+        }
 
-      const url = article.link;
+        if (article.link === undefined
+            || article.link === null
+            || article.link === '') {
+          logger.error(feed.name, 'article has no link', article);
+          return;
+        }
 
-      await client.set(articleKey, JSON.stringify(article));
+        const url = article.link;
 
-      children.push({
-        name: 'summarize',
-        queueName: queues.summarizerQueue.name,
-        data: { feed: feed.name, article, index, url },
-        children: [
-          {
-            name: 'pageCrawler',
-            queueName: queues.pageCrawlerQueue.name,
-            data: { feed: feed.name, article, index, url },
-          },
-        ]
+        await client.set(articleKey, JSON.stringify(article));
+
+        children.push({
+          name: 'summarize',
+          queueName: queues.summarizerQueue.name,
+          data: { feed: feed.name, article, index, url, articleKey },
+          children: [
+            {
+              name: 'pageCrawler',
+              queueName: queues.pageCrawlerQueue.name,
+              data: { feed: feed.name, article, index, url },
+            },
+          ]
+        });
+
+
+      };
+
+      await queues.flowProducer.add({
+        name: feed.name,
+        queueName: queues.rssFeedQueue.name,
+        data: { feed: feed.name, time: new Date().toISOString(), chunkNum:i, total: chunk.length },
+        children
       });
+      i++;
 
 
-    };
-
-    await queues.flowProducer.add({
-      name: feed.name,
-      queueName: queues.rssFeedQueue.name,
-      data: { feed: feed.name, time: new Date().toISOString(), total: latestArticles.length },
-      children
-    });
+    }
 
   } catch (error) {
     console.error('Error parsing and storing feed:', error);
@@ -199,35 +207,38 @@ app.get('/', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
-  await client.connect();
-  logger.info(`Listening on port ${PORT}`);
-  const queues = await index.getQueues(client);
+if (require.main === module) {
+  app.listen(PORT, async () => {
+    await client.connect();
+    logger.info(`Listening on port ${PORT}`);
+    const queues = await index.getQueues(client);
 
-  const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
-  const scheduleTimeSeconds = 1 * 60 * 60;
+    const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
+    const scheduleTimeSeconds = 1 * 60 * 60;
 
-  await Promise.all([
-    (async () => {
-      while (true) {
-        await summary.startSummariseFeeds(client);
-        await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
-      }
-    })(),
-    (async () => {
-      while (true) {
-
-        for (const feed of config.feeds) {
-          logger.info(`[REFEED] ${feed.name}`);
-          parseAndStoreFeed(feed, 1000);
-          //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+    await Promise.all([
+      (async () => {
+        while (true) {
+          await summary.startSummariseFeeds(client);
+          await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
         }
-        await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
-      }
-    })()
-  ]);
-  //parseAndStoreFeed(queues, '<url>').catch(console.log);
-});
+      })(),
+      (async () => {
+        while (true) {
+
+          for (const feed of config.feeds) {
+            logger.info(`[REFEED] ${feed.name}`);
+            parseAndStoreFeed(feed, 1000);
+            //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+          }
+          await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
+        }
+      })()
+    ]);
+    //parseAndStoreFeed(queues, '<url>').catch(console.log);
+  });
+
+}
 
 
 

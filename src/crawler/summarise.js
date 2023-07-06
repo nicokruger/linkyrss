@@ -342,7 +342,7 @@ async function startSummariseFeeds(client) {
   // filter out articles that are too old
   articles = articles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
   articles = articles.map( a => a.replace('article:', '') );
-  console.log('have articles', articles.length);
+  logger.debug('ai writer: have articles', articles.length);
 
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
@@ -421,15 +421,21 @@ Provide simple markdown: `;
     const {theme,posts:linksonly} = cluster;
     let markdowns = '';
 
-    console.log('links', linksonly);
-    console.log('all article links', allArticles.map(a => a.article.link));
+    //console.log('links', linksonly);
     const posts = allArticles.filter(a => linksonly.includes(a.article.link));
+	  logger.info(`incoming links: ${linksonly.length}, found links: ${posts.length}`);
+	  //console.log('posts', posts);
     if (!posts.length) {
       throw new Error('no posts for cluster');
     }
-    //if (posts.length !== linksonly.length) {
-    //  throw new Error('not all posts found');
-    //}
+	  console.log('PLOX');
+    if (posts.length < linksonly.length) {
+      let missingLinks = linksonly.filter( l => !posts.map( a => a.article.link ).includes(l) );
+	    //console.log('ML0', missingLinks);
+      missingLinks = missingLinks.join("\n");
+	    //console.log('ML', missingLinks);
+      throw new Error(`not all posts found: ${linksonly.length} vs ${posts.length}: ${missingLinks}`);
+    }
     markdowns += posts.map(formatIncomingPost)
 
     const links = posts.map( p => {
@@ -489,4 +495,19 @@ module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
 module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;
+
+if (require.main == module) {
+  const redis = require('redis');
+  const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688608725812.json').toString());
+  const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
+  const client = redis.createClient({url:redisUrl});
+
+  console.log('hi');
+  client.connect().then( async () => {
+    console.log('connected');
+    await aiWriter(p, null, client);
+  });
+
+
+}
   

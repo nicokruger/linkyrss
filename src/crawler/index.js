@@ -67,9 +67,11 @@ async function start() {
   });
 }
 
-start().then( async () => {
-  logger.info('started');
-});
+//if (require.main == module) {
+  start().then( async () => {
+    logger.info('started');
+  });
+//}
 
 let __queues = null;
 
@@ -106,8 +108,16 @@ module.exports.getQueues = async (client) => {
 
   // Setup the workers
   new Worker('feed', async (job) => {
-    const { feed, total } = job.data;
-    logger.info(`[${feed}] ${total} articles`);
+    const { feed, total,chunkNum } = job.data;
+    logger.info(`Done [${feed}] chunk ${chunkNum}, ${total} articles`);
+
+    const childrenValues = await job.getChildrenValues();
+    for (const articleKey of Object.values(childrenValues)) {
+      logger.debug('set done', articleKey);
+      const alreadyDoneKey = `done:${articleKey}`;
+      await client.set(alreadyDoneKey, 'true');
+    }
+
     /*
     const { feed, n } = job.data;
     console.log('rssFeed', job.data);
@@ -131,12 +141,12 @@ module.exports.getQueues = async (client) => {
 
   new Worker('summarizer', async (job) => {
     //console.log('summarizer', job.data);
-    const { url, article } = job.data;
+    const { url, article, articleKey } = job.data;
 
     const page = await db.getPage(url);
     const key = `summary:${page.url}`;
     const alreadyExists = await client.exists(key);
-    if (alreadyExists) return article;
+    if (alreadyExists) return articleKey;
 
     const summary = await summarise.summarise_url(
       article.link,
@@ -144,6 +154,8 @@ module.exports.getQueues = async (client) => {
     );
 
     await client.set(key, JSON.stringify(summary));
+
+    return articleKey;
 
   }, {
     ...opts,
@@ -192,6 +204,7 @@ module.exports.getQueues = async (client) => {
       summary:true,
       meta:{
         title:'Test',
+	update:new Date().toISOString(),
         description:'Test',
       }
     });
