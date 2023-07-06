@@ -42,11 +42,12 @@ async function parseAndStoreFeed(feed, n) {
     for (const article of latestArticles) {
       const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
       const articleKey = `article:${feed.name}:${index}`;
-      const articleExists = await client.exists(articleKey);
-      //if (articleExists) {
-      //  logger.debug('article already exists', articleKey);
-      //  continue;
-      //}
+      const alreadyDoneKey = `done:${articleKey}`;
+      const alreadyDone = await client.exists(alreadyDoneKey);
+      if (alreadyDone) {
+        logger.debug('article already exists', articleKey);
+        continue;
+      }
 
       if (first) {
         const feedData = {
@@ -71,7 +72,7 @@ async function parseAndStoreFeed(feed, n) {
       children.push({
         name: 'summarize',
         queueName: queues.summarizerQueue.name,
-        data: { feed: feed.name, article, index, url },
+        data: { feed: feed.name, article, index, url, articleKey },
         children: [
           {
             name: 'pageCrawler',
