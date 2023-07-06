@@ -204,6 +204,7 @@ module.exports.getQueues = async (client) => {
       summary:true,
       meta:{
         title:'Test',
+	update:new Date().toISOString(),
         description:'Test',
       }
     });

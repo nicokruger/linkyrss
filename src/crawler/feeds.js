@@ -67,7 +67,7 @@ class FeedWriter {
       description: "AI for " + this.name,
       id: this.name,
       link: 'https://www.inmytree.co.za/' + this.name,
-      updated: new Date(updated),
+      updated: new Date(updated ?? 0),
       generator: 'rss-atom-feed-processor',
     });
 
@@ -82,7 +82,6 @@ ${theme}
 ${links.map( link => `- [${link.title}](${link.link})`).join('\n')}
 `
       const html = marked.parse(md);
-      console.log(html);
       const narticle = {
         title,
         guid: date + '_summary',

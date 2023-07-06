@@ -421,16 +421,20 @@ Provide simple markdown: `;
     const {theme,posts:linksonly} = cluster;
     let markdowns = '';
 
-    console.log('links', linksonly);
-    console.log('all article links', allArticles.filter(a => JSON.stringify(a).includes('neovim')));
+    //console.log('links', linksonly);
     const posts = allArticles.filter(a => linksonly.includes(a.article.link));
 	  logger.info(`incoming links: ${linksonly.length}, found links: ${posts.length}`);
-	  console.log('posts', posts);
+	  //console.log('posts', posts);
     if (!posts.length) {
       throw new Error('no posts for cluster');
     }
-    if (posts.length !== linksonly.length) {
-      throw new Error('not all posts found');
+	  console.log('PLOX');
+    if (posts.length < linksonly.length) {
+      let missingLinks = linksonly.filter( l => !posts.map( a => a.article.link ).includes(l) );
+	    //console.log('ML0', missingLinks);
+      missingLinks = missingLinks.join("\n");
+	    //console.log('ML', missingLinks);
+      throw new Error(`not all posts found: ${linksonly.length} vs ${posts.length}: ${missingLinks}`);
     }
     markdowns += posts.map(formatIncomingPost)
 
