@@ -187,6 +187,7 @@ app.get('/', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+if (require.main === module) {
 app.listen(PORT, async () => {
   await client.connect();
   logger.info(`Listening on port ${PORT}`);
@@ -216,6 +217,8 @@ app.listen(PORT, async () => {
   ]);
   //parseAndStoreFeed(queues, '<url>').catch(console.log);
 });
+
+}
 
 
 

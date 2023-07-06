@@ -422,14 +422,16 @@ Provide simple markdown: `;
     let markdowns = '';
 
     console.log('links', linksonly);
-    console.log('all article links', allArticles.map(a => a.article.link));
+    console.log('all article links', allArticles.filter(a => JSON.stringify(a).includes('neovim')));
     const posts = allArticles.filter(a => linksonly.includes(a.article.link));
+	  logger.info(`incoming links: ${linksonly.length}, found links: ${posts.length}`);
+	  console.log('posts', posts);
     if (!posts.length) {
       throw new Error('no posts for cluster');
     }
-    //if (posts.length !== linksonly.length) {
-    //  throw new Error('not all posts found');
-    //}
+    if (posts.length !== linksonly.length) {
+      throw new Error('not all posts found');
+    }
     markdowns += posts.map(formatIncomingPost)
 
     const links = posts.map( p => {
@@ -489,4 +491,19 @@ module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
 module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;
+
+if (require.main == module) {
+	const redis = require('redis');
+	const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688608725812.json').toString());
+const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
+const client = redis.createClient({url:redisUrl});
+
+	console.log('hi');
+client.connect().then( async () => {
+	console.log('connected');
+await aiWriter(p, null, client);
+});
+
+
+}
   

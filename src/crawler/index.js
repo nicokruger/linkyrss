@@ -67,9 +67,11 @@ async function start() {
   });
 }
 
-start().then( async () => {
-  logger.info('started');
-});
+if (require.main == module) {
+	start().then( async () => {
+	  logger.info('started');
+	});
+}
 
 let __queues = null;
 
