@@ -43,10 +43,10 @@ async function parseAndStoreFeed(feed, n) {
       const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
       const articleKey = `article:${feed.name}:${index}`;
       const articleExists = await client.exists(articleKey);
-      if (articleExists) {
-        logger.debug('article already exists', articleKey);
-        continue;
-      }
+      //if (articleExists) {
+      //  logger.debug('article already exists', articleKey);
+      //  continue;
+      //}
 
       if (first) {
         const feedData = {
