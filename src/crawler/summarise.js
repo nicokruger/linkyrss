@@ -493,16 +493,16 @@ module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;
 
 if (require.main == module) {
-	const redis = require('redis');
-	const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688608725812.json').toString());
-const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
-const client = redis.createClient({url:redisUrl});
+  const redis = require('redis');
+  const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688608725812.json').toString());
+  const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
+  const client = redis.createClient({url:redisUrl});
 
-	console.log('hi');
-client.connect().then( async () => {
-	console.log('connected');
-await aiWriter(p, null, client);
-});
+  console.log('hi');
+  client.connect().then( async () => {
+    console.log('connected');
+    await aiWriter(p, null, client);
+  });
 
 
 }

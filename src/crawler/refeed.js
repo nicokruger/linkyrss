@@ -188,35 +188,35 @@ app.get('/', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-app.listen(PORT, async () => {
-  await client.connect();
-  logger.info(`Listening on port ${PORT}`);
-  const queues = await index.getQueues(client);
+  app.listen(PORT, async () => {
+    await client.connect();
+    logger.info(`Listening on port ${PORT}`);
+    const queues = await index.getQueues(client);
 
-  const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
-  const scheduleTimeSeconds = 1 * 60 * 60;
+    const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
+    const scheduleTimeSeconds = 1 * 60 * 60;
 
-  await Promise.all([
-    (async () => {
-      while (true) {
-        await summary.startSummariseFeeds(client);
-        await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
-      }
-    })(),
-    (async () => {
-      while (true) {
-
-        for (const feed of config.feeds) {
-          logger.info(`[REFEED] ${feed.name}`);
-          parseAndStoreFeed(feed, 1000);
-          //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+    await Promise.all([
+      (async () => {
+        while (true) {
+          await summary.startSummariseFeeds(client);
+          await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
         }
-        await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
-      }
-    })()
-  ]);
-  //parseAndStoreFeed(queues, '<url>').catch(console.log);
-});
+      })(),
+      (async () => {
+        while (true) {
+
+          for (const feed of config.feeds) {
+            logger.info(`[REFEED] ${feed.name}`);
+            parseAndStoreFeed(feed, 1000);
+            //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+          }
+          await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
+        }
+      })()
+    ]);
+    //parseAndStoreFeed(queues, '<url>').catch(console.log);
+  });
 
 }
 
