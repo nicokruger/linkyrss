@@ -106,6 +106,25 @@ function refeedArticles(articles) {
       //article.summary = "cheese";
       const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
       article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
+
+      /*
+      category: [
+        {
+          name: 'Cheese',
+          scheme: 'https://example.com/category/cheese',
+          domain: 'https://example.com/',
+          term: 'cheese',
+        }
+      ]
+      */
+      article.category = summary.tags?.map( ({tag,confidence}) => {
+        return {
+          name: tag,
+          scheme: 'https://ttrss.inmytree.co.za/category/' + tag,
+          domain: 'https://ttrss.inmytree.co.za/',
+          term: tag,
+        }
+      });
       return article;
     } else {
       return null;
@@ -134,18 +153,11 @@ function createNewFeed(meta, feedUrl, articles) {
       content: article.content,
       //author: article['atom:author'] ?? article.author,
       date: new Date(article.pubDate),
-      category: [
-        {
-          name: 'Cheese',
-          scheme: 'https://example.com/category/cheese',
-          domain: 'https://example.com/',
-          term: 'cheese',
-        }
-      ]
+      category: article.category,
     });
   });
 
-  feed.addCategory('Technology');
+  //feed.addCategory('Technology');
 
   return feed;
 }
