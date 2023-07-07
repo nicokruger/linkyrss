@@ -3,7 +3,6 @@ const _ = require('lodash');
 const summarise = require('./summarise');
 const { Feed, Category } = require('feed');
 
-
 async function getFeed(client, name) {
   const latestArticlesKeys = await client.keys(`article:${name}:*`);
   const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key, index) => {
@@ -81,7 +80,7 @@ ${theme}
 ## Links
 ${links.map( link => `- [${link.title}](${link.link})`).join('\n')}
 `
-      const html = marked.parse(md);
+      const html = marked.parse(cleanMarkdown(md));
       const narticle = {
         title,
         guid: date + '_summary',
@@ -113,3 +112,14 @@ module.exports.getFeedArticles = async function (client, feedName) {
 
 module.exports.FeedWriter = FeedWriter;
 module.exports.getFeed = getFeed;
+
+
+function cleanMarkdown(md) {
+  md = md.trim()
+  /// remove ```markdown, ```md, from the start of the contents
+  md = md.replace(/^```(markdown|md)?\n/g,'').replace(/^```\n/g,'');
+  /// remove ``` from the end of the contents
+  md = md.replace(/```$/g,'');
+  return md;
+}
+

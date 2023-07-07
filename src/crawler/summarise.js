@@ -323,8 +323,7 @@ ${summary.summary}
 
 async function startSummariseFeeds(client, aifeed) {
   const queues = await index.getQueues(client);
-  const dateFrom = new Date();
-  dateFrom.setMinutes(dateFrom.getMinutes() - aifeed.postsHistoryMinutes);
+  const dateFrom = new Date(new Date().getTime() - aiwriter.postsHistoryMinutes * 60 * 1000);
 
   let articles = [];
   for (const source of aifeed.sources) {
@@ -380,16 +379,16 @@ For example:
 \`\`\`
 ## In the news - News and more
 
-*A Slack clone in 5 lines of bash*
+### A Slack clone in 5 lines of bash
 A minimalist chat system called Suc, built with only five lines of bash, is gaining attention. Suc offers core features like real-time chat, file sharing, access control, automation, integration, data encryption, and user authentication. The simplicity and efficiency of Suc are highlighted compared to other chat systems like Slack and Mattermost. [source](example.com)
 
-*Midweek Movie Free Talk*
+### Midweek Movie Free Talk
 Users on Tildes discuss various movies, including "The Gangster, The Cop, The Devil," where Sylvester Stallone is reportedly planning a US version. Additionally, disappointment with recent Pixar films, particularly "Elemental," is expressed due to weak storytelling and uninspired themes. [source](example.com)
 
-*Injection of kidney protein improves working memory in monkeys*
+### Injection of kidney protein improves working memory in monkeys
 A recent study published in the journal Nature Aging reveals that a single injection of the klotho protein improves cognitive function in older monkeys. The protein, naturally produced by the kidney, has been associated with health benefits and better performance in thinking and memory tests in humans. This study paves the way for potential advancements in rejuvenating brain function in older adults. [source](example.com)
 
-*Lossy Image Formats*
+### Lossy Image Formats
 A comprehensive page explores various lossy image formats as alternatives to the de-facto standard JPEG. The examined formats include JPEG 2000, JPEG XR, JPEG XS, JPEG XL, WEBP, FLIF, BPG, HEIF/HEIC, and AVIF. The article discusses their development, features, and patent uncertainties. AVIF is recommended as the best option due to its performance, despite some limitations on mobile browsers. [source](example.com)source
 ....
 one for each article
@@ -469,13 +468,13 @@ Provide simple markdown: `;
       console.log('--------------------------');
       console.log(new_article);
 
-      const title = await get_llm_raw(
+      const title = cleanTitle(await get_llm_raw(
         null, "",
         "Provide a suitable title for this article that is written around a theme: {theme}\n\n{article}",
         [],
         {article: new_article, theme},
         []
-      );
+      ));
 
       const idx = new Date().toISOString();
 
@@ -527,3 +526,9 @@ if (require.main == module) {
 
 }
   
+function cleanTitle(title) {
+  title = title.trim();
+  title = title.replace(/^"/,'');
+  title = title.replace(/"$/,'');
+  return title;
+}
