@@ -218,7 +218,7 @@ if (require.main === module) {
 
     await Promise.all([
       (async () => {
-        await Promise.all( config.feeds.map( async (aifeed) => {
+        await Promise.all( config.aifeeds.map( async (aifeed) => {
           while (true) {
             logger.info(`[AIFEED] ${aifeed.name}`);
             await summary.startSummariseFeeds(client, aifeed);
