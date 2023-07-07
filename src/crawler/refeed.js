@@ -218,10 +218,13 @@ if (require.main === module) {
 
     await Promise.all([
       (async () => {
-        while (true) {
-          await summary.startSummariseFeeds(client);
-          await new Promise( (resolve) => setTimeout(resolve, 1 * 60 * 60 * 1000) );
-        }
+        await Promise.all( config.feeds.map( async (aifeed) => {
+          while (true) {
+            logger.info(`[AIFEED] ${aifeed.name}`);
+            await summary.startSummariseFeeds(client, aifeed);
+            await new Promise( (resolve) => setTimeout(resolve, aifeed.scheduleTimeMinutes * 60 * 1000) );
+          }
+        }));
       })(),
       (async () => {
         while (true) {

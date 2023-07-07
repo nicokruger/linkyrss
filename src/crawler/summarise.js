@@ -321,31 +321,21 @@ ${summary.summary}
 
 };
 
-async function startSummariseFeeds(client) {
+async function startSummariseFeeds(client, aifeed) {
   const queues = await index.getQueues(client);
   const dateFrom = new Date();
-  // 4 hours ago
-  dateFrom.setHours(dateFrom.getHours() - 24);
-  //dateFrom.setDate(dateFrom.getDate() - 1);
+  dateFrom.setMinutes(dateFrom.getMinutes() - aifeed.postsHistoryMinutes);
 
-  //const feedwriter = new feeds.FeedWriter('Test', client, queues);
-  //await feedwriter.clearFeed();
-  /*
-  feedwriter.writeFeedMeta({
-    summary:true,
-    meta:{
-      title:'Test',
-      description:'Test',
-    }
-  });
-  */
+  let articles = [];
+  for (const source of aifeed.sources) {
+    let theseArticles = await client.keys(`article:${source}:*`);
+    // filter out articles that are too old
+    theseArticles = theseArticles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
+    theseArticles = theseArticles.map( a => a.replace('article:', '') );
 
-
-  let articles = await client.keys('article:*');
-  // filter out articles that are too old
-  articles = articles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
-  articles = articles.map( a => a.replace('article:', '') );
-  logger.debug('ai writer: have articles', articles.length);
+    articles = articles.concat(theseArticles);
+  }
+  logger.info(`ai writer: feed ${aifeed.name} has ${articles.length} articles for the last ${aifeed.postsHistoryMinutes} minutes`);
 
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
@@ -355,17 +345,17 @@ async function startSummariseFeeds(client) {
   const flow = await queues.flowProducer.add({
     name: 'aiWriter',
     queueName: queues.aiWriterQueue.name,
-    data: { feed: 'Test', articles, outPostsName },
+    data: { feed: aifeed.name, articles, outPostsName },
     children: [
       {
         name: 'cluster',
         queueName: queues.clustererQueue.name,
-        data: { inFileName:outFileName, outPostsName },
+        data: { feed: aifeed.name, inFileName:outFileName, outPostsName },
         children: [
           {
             name: 'embedding',
             queueName: queues.embeddingQueue.name,
-            data: { inFileName, outFileName },
+            data: { feed: aifeed.name, inFileName, outFileName },
           }
         ]
       }
