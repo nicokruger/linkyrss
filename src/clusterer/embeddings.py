@@ -1,4 +1,5 @@
 # imports
+import pprint
 import pandas as pd
 import tiktoken
 import redis
@@ -27,6 +28,7 @@ summary_keys = ["summary:" + x for x in article_ids]
 titles = []
 summaries = []
 links = []
+tags = []
 
 for key in article_keys:
     articlestr = client.get(key)
@@ -37,10 +39,13 @@ for key in article_keys:
     if summarystr is None:
         continue
     summary = json.loads(summarystr.decode('utf-8'))
+    #pprint.pprint(summary)
 
     titles.append(article['title'])
     links.append(article['link'])
     summaries.append(summary['summary'])
+    tags_str = ' '.join(['#' + tag['tag'] for tag in summary['tags']])
+    tags.append(tags_str)
 
 print(f"Found {len(titles)} articles")
 print(f"Found {len(summaries)} summaries")
@@ -53,11 +58,11 @@ embedding_encoding = "cl100k_base"  # this the encoding for text-embedding-ada-0
 max_tokens = 8000  # the maximum for text-embedding-ada-002 is 8191
 
 # load & inspect dataset
-df = pd.DataFrame({'title': titles, 'link':links, 'summary': summaries})
-df = df[["title", "summary", "link"]]
+df = pd.DataFrame({'title': titles, 'link':links, 'summary': summaries, 'tags':tags})
+df = df[["title", "summary", "link", "tags"]]
 df = df.dropna()
 df["combined"] = (
-    "Title: " + df.title + "; Content: " + df.summary
+        "## " + df.title + "\nTags: " + df.tags + "\n\n" + df.summary
 )
 print(df.head(2))
 

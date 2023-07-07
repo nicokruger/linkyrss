@@ -21,21 +21,43 @@ if out_file is None:
     sys.exit(1)
 
 df = pd.read_csv(datafile_path)
+# group by link
+df = df.groupby("link").first().reset_index()
+
+print(df.head())
 df["embedding"] = df.embedding.apply(eval).apply(np.array)  # convert string to numpy array
 matrix = np.vstack(df.embedding.values)
 matrix.shape
 
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN, SpectralClustering, AgglomerativeClustering, Birch
+from sklearn.mixture import GaussianMixture
 
 print("shape of matrix:", matrix.shape)
 print("df.shape:", df.shape)
-n_clusters = max(df.shape[0] // 10, 3)
+n_clusters = max(df.shape[0] // 6, 3)
 print("n_clusters:", n_clusters)
 
-kmeans = KMeans(n_clusters=n_clusters, init="k-means++", random_state=42)
-kmeans.fit(matrix)
-labels = kmeans.labels_
+#kmeans = KMeans(n_clusters=n_clusters, init="random", n_init=1000)
+#kmeans.fit(matrix)
+#labels = kmeans.labels_
+#df["Cluster"] = labels
+
+#spectral = SpectralClustering(n_clusters=n_clusters, assign_labels="discretize", random_state=0)
+#spectral.fit(matrix)
+#labels = spectral.labels_
+#df["Cluster"] = labels
+
+#agglo = AgglomerativeClustering(n_clusters=n_clusters)
+#agglo.fit(matrix)
+#labels = agglo.labels_
+#df["Cluster"] = labels
+
+gmm = GaussianMixture(n_components=n_clusters)
+gmm.fit(matrix)
+labels = gmm.predict(matrix)
 df["Cluster"] = labels
+
+
 
 #df.groupby("Cluster").Score.mean().sort_values()
 
@@ -73,24 +95,25 @@ for i in range(n_clusters):
 
     print(f"Cluster {i} Theme:", end=" ")
 
-    posts = "\n".join(
+    posts = "\n\n\n".join(
         df[df.Cluster == i]
         .combined.str.replace("Title: ", "")
         .str.replace("\n\nContent: ", ":  ")
         #.sample(rev_per_cluster, random_state=42)
         .values
     )
+
     num_tries = 4
     sleep_time = 1.4
     response = None
     while response is None and num_tries > 0:
         try:
             response = openai.ChatCompletion.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo-16k",
                 messages=[
                     {
                         "role":"user",
-                        "content":f'What do the following posts have in common?\n\nPosts:\n"""\n{posts}\n"""\n\nTheme:'
+                        "content":f'What do the following posts have in common. Provide one short sentence capturing the common theme of the posts.\n\nPosts:\n"""\n{posts}\n"""\n\nTheme:'
                     }
                 ],
                 temperature=0,

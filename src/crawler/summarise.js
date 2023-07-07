@@ -10,6 +10,8 @@ const _ =  require('lodash');
 const feeds = require('./feeds.js');
 const index = require('./index.js');
 const aifunctions = require('./aifunctions.js');
+const pLimit = require('p-limit');
+const limit = pLimit(3);
 
 function formatGroupedPost({summary,article}) {
   //return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
@@ -86,7 +88,8 @@ async function get_llm_raw(
   inputs,
   history = [],
   function_call = "auto",
-  out_prompt = null
+  out_prompt = null,
+  model = "gpt-3.5-turbo-16k",
 ) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -149,7 +152,7 @@ async function get_llm_raw(
         }, slowtime);
       });
       const chatCompletionPromise = openai.createChatCompletion({
-        model: "gpt-3.5-turbo-16k",
+        model,
         //stream: true,
         //model: "gpt-3.5-turbo-0613",
         messages,
@@ -322,7 +325,7 @@ async function startSummariseFeeds(client) {
   const queues = await index.getQueues(client);
   const dateFrom = new Date();
   // 4 hours ago
-  dateFrom.setHours(dateFrom.getHours() - 4);
+  dateFrom.setHours(dateFrom.getHours() - 24);
   //dateFrom.setDate(dateFrom.getDate() - 1);
 
   //const feedwriter = new feeds.FeedWriter('Test', client, queues);
@@ -348,6 +351,7 @@ async function startSummariseFeeds(client) {
   fs.writeFileSync(inFileName, articles.join("\n"));
   const outFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.csv';
   const outPostsName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.json';
+
   const flow = await queues.flowProducer.add({
     name: 'aiWriter',
     queueName: queues.aiWriterQueue.name,
@@ -379,19 +383,24 @@ async function aiWriter(posts, feedwriter, client) {
 {markdowns}
 
 
-I want you to write a Wikipedia "In the news" section paragraph..
+I want you to write a Wikipedia "In the news" section.
 Include references and links to the original content.
 
 For example:
 \`\`\`
-In the news - News and more
-A Slack clone in 5 lines of bash: A minimalist chat system called Suc, built with only five lines of bash, is gaining attention. Suc offers core features like real-time chat, file sharing, access control, automation, integration, data encryption, and user authentication. The simplicity and efficiency of Suc are highlighted compared to other chat systems like Slack and Mattermost. source
+## In the news - News and more
 
-Midweek Movie Free Talk: Users on Tildes discuss various movies, including "The Gangster, The Cop, The Devil," where Sylvester Stallone is reportedly planning a US version. Additionally, disappointment with recent Pixar films, particularly "Elemental," is expressed due to weak storytelling and uninspired themes. source
+*A Slack clone in 5 lines of bash*
+A minimalist chat system called Suc, built with only five lines of bash, is gaining attention. Suc offers core features like real-time chat, file sharing, access control, automation, integration, data encryption, and user authentication. The simplicity and efficiency of Suc are highlighted compared to other chat systems like Slack and Mattermost. [source](example.com)
 
-Injection of kidney protein improves working memory in monkeys: A recent study published in the journal Nature Aging reveals that a single injection of the klotho protein improves cognitive function in older monkeys. The protein, naturally produced by the kidney, has been associated with health benefits and better performance in thinking and memory tests in humans. This study paves the way for potential advancements in rejuvenating brain function in older adults. source
+*Midweek Movie Free Talk*
+Users on Tildes discuss various movies, including "The Gangster, The Cop, The Devil," where Sylvester Stallone is reportedly planning a US version. Additionally, disappointment with recent Pixar films, particularly "Elemental," is expressed due to weak storytelling and uninspired themes. [source](example.com)
 
-Lossy Image Formats: A comprehensive page explores various lossy image formats as alternatives to the de-facto standard JPEG. The examined formats include JPEG 2000, JPEG XR, JPEG XS, JPEG XL, WEBP, FLIF, BPG, HEIF/HEIC, and AVIF. The article discusses their development, features, and patent uncertainties. AVIF is recommended as the best option due to its performance, despite some limitations on mobile browsers. source
+*Injection of kidney protein improves working memory in monkeys*
+A recent study published in the journal Nature Aging reveals that a single injection of the klotho protein improves cognitive function in older monkeys. The protein, naturally produced by the kidney, has been associated with health benefits and better performance in thinking and memory tests in humans. This study paves the way for potential advancements in rejuvenating brain function in older adults. [source](example.com)
+
+*Lossy Image Formats*
+A comprehensive page explores various lossy image formats as alternatives to the de-facto standard JPEG. The examined formats include JPEG 2000, JPEG XR, JPEG XS, JPEG XL, WEBP, FLIF, BPG, HEIF/HEIC, and AVIF. The article discusses their development, features, and patent uncertainties. AVIF is recommended as the best option due to its performance, despite some limitations on mobile browsers. [source](example.com)source
 ....
 one for each article
 \`\`\`
@@ -417,75 +426,88 @@ Provide simple markdown: `;
     throw new Error('no articles');
   }
 
-  for (const cluster of clusteredPosts) {
-    const {theme,posts:linksonly} = cluster;
-    let markdowns = '';
+  await Promise.all(clusteredPosts.map(async (cluster) => {
+    return limit( async () => {
 
-    //console.log('links', linksonly);
-    const posts = allArticles.filter(a => linksonly.includes(a.article.link));
-	  logger.info(`incoming links: ${linksonly.length}, found links: ${posts.length}`);
-	  //console.log('posts', posts);
-    if (!posts.length) {
-      throw new Error('no posts for cluster');
-    }
-	  console.log('PLOX');
-    if (posts.length < linksonly.length) {
-      let missingLinks = linksonly.filter( l => !posts.map( a => a.article.link ).includes(l) );
-	    //console.log('ML0', missingLinks);
-      missingLinks = missingLinks.join("\n");
-	    //console.log('ML', missingLinks);
-      throw new Error(`not all posts found: ${linksonly.length} vs ${posts.length}: ${missingLinks}`);
-    }
-    markdowns += posts.map(formatIncomingPost)
+      const {theme,posts:linksonly} = cluster;
+      let markdowns = '';
 
-    const links = posts.map( p => {
-      return {
-        link:p.article.link,
-        title:p.article.title
+      //console.log('links', linksonly);
+      const posts = allArticles.filter(a => linksonly.includes(a.article.link));
+      logger.info(`incoming links: ${linksonly.length}, found links: ${posts.length}`);
+      //console.log('posts', posts);
+      if (!posts.length) {
+        throw new Error('no posts for cluster');
       }
+      console.log('PLOX');
+      if (posts.length < linksonly.length) {
+        let missingLinks = linksonly.filter( l => !posts.map( a => a.article.link ).includes(l) );
+        //console.log('ML0', missingLinks);
+        missingLinks = missingLinks.join("\n");
+        //console.log('ML', missingLinks);
+        throw new Error(`not all posts found: ${linksonly.length} vs ${posts.length}: ${missingLinks}`);
+      }
+      markdowns += posts.map(formatIncomingPost).join("\n\n");
+
+      const links = posts.map( p => {
+        return {
+          link:p.article.link,
+          title:p.article.title
+        }
+      });
+      console.log('links', links);
+      
+      const inputs = {
+        theme,
+        markdowns,
+      }
+      const debug_prompt = [];
+      const new_article = await get_llm_raw(
+        null,
+        "",
+        template,
+        [],
+        inputs,
+        [],
+        "auto",
+        debug_prompt,
+        'gpt-4'
+
+        //{"name":"group_or_regroup_article"}
+      );
+      console.log(debug_prompt[0]);
+      console.log('--------------------------');
+      console.log(new_article);
+
+      const title = await get_llm_raw(
+        null, "",
+        "Provide a suitable title for this article that is written around a theme: {theme}\n\n{article}",
+        [],
+        {article: new_article, theme},
+        []
+      );
+
+      const idx = new Date().toISOString();
+
+      console.log('write article', title);
+      //const articleContents = new_article + "<br/><pre>" + debug_prompt[0] + "</pre>";
+      const articleContents = new_article;
+      await feedwriter.writeArticle(
+        idx,
+        title,
+        articleContents,
+        links,
+        theme
+      );
+
+
+
+
+
     });
-    console.log('links', links);
-    
-    const inputs = {
-      theme,
-      markdowns,
-    }
-    const debug_prompt = [];
-    const new_article = await get_llm_raw(
-      null,
-      "",
-      template,
-      [],
-      inputs,
-      [],
-      "auto",
-      debug_prompt
-
-      //{"name":"group_or_regroup_article"}
-    );
-    console.log(new_article);
-
-    const title = await get_llm_raw(
-      null, "",
-      "Provide a suitable title for this article:\n\n{article}",
-      [],
-      {article: new_article},
-      []
-    );
-
-    const idx = new Date().toISOString();
-
-    console.log('write article', title);
-    await feedwriter.writeArticle(
-      idx,
-      title,
-      new_article + "<br/><pre>" + debug_prompt[0] + "</pre>",
-      links,
-      theme
-    );
-
-
-  }
+  }));
+  //for (const cluster of clusteredPosts) {
+  //}
 
 }
 
@@ -498,14 +520,18 @@ module.exports.get_llm_tags = get_llm_tags;
 
 if (require.main == module) {
   const redis = require('redis');
-  const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688608725812.json').toString());
+  const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688749525576.json').toString());
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
   const client = redis.createClient({url:redisUrl});
 
   console.log('hi');
   client.connect().then( async () => {
     console.log('connected');
-    await aiWriter(p, null, client);
+
+    const feedwriter = new feeds.FeedWriter('Test', client);
+    await feedwriter.clearFeed();
+
+    await aiWriter(p, feedwriter, client);
   });
 
 
