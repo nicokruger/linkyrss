@@ -323,7 +323,7 @@ ${summary.summary}
 
 async function startSummariseFeeds(client, aifeed) {
   const queues = await index.getQueues(client);
-  const dateFrom = new Date(new Date().getTime() - aiwriter.postsHistoryMinutes * 60 * 1000);
+  const dateFrom = new Date(new Date().getTime() - aifeed.postsHistoryMinutes * 60 * 1000);
 
   let articles = [];
   for (const source of aifeed.sources) {
