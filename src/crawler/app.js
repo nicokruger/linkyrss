@@ -4,6 +4,7 @@ const path = require('path');
 const articleController = require('./articleController');
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
+const feeds = require('./feeds.js');
 //const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 const redis = require('redis');
