@@ -1,4 +1,3 @@
-
 const path = require('path');
 const fs = require('fs');
 const { Crawler, RedisCrawler } = require('./crawler');
@@ -14,98 +13,17 @@ const python = require('./python.js');
 const refeed = require('./refeed.js');
 const cluster = require('./cluster.js');
 const feeds = require('./feeds.js');
+const _ = require('lodash');
+const feedparser = require('feedparser-promised');
+const { Feed, Category } = require('feed');
+const index = require('./index.js');
+const summary = require('./summarise.js');
 
 const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bullmq');
-const { createBullBoard } = require('@bull-board/api');
-const { BullAdapter } = require('@bull-board/api/bullAdapter');
-//const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
-const { ExpressAdapter } = require('@bull-board/express');
-const express = require('express');
-
-
-async function crawl(db, url) {
-  if (!db) throw new Error('db required');
-  const redisCrawler = new RedisCrawler(client, db);
-
-  const page = await redisCrawler.crawl(url);
-  return page;
-
-}
-
-async function start() {
-  await client.connect();
-  const queues = await module.exports.getQueues(client);
-  const serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath('/admin/queues');
-  /*const { addQueue, removeQueue, setQueues, replaceQueues } =*/
-  createBullBoard({
-    queues: [
-      new BullAdapter(queues.rssFeedQueue),
-      new BullAdapter(queues.pageCrawlerQueue),
-      new BullAdapter(queues.summarizerQueue),
-      new BullAdapter(queues.embeddingQueue),
-      new BullAdapter(queues.clustererQueue),
-      new BullAdapter(queues.aiWriterQueue),
-
-      //new BullMQAdapter(queueMQ)
-    ],
-    serverAdapter: serverAdapter,
-  });
-
-  const app = express();
-
-  app.use('/admin/queues', serverAdapter.getRouter());
-
-  // other configurations of your server
-
-  //const port = parseInt(process.env.PORT ?? 3000);
-  const port = 8080;
-  console.log('starting on port', port);
-  app.listen(port, () => {
-    console.log('Running on port', port);
-    console.log(`For the UI, open http://localhost:${port}/admin/queues`);
-  });
-}
-
-//if (require.main == module) {
-  start().then( async () => {
-    logger.info('started');
-  });
-//}
 
 let __queues = null;
 
-module.exports.getQueues = async (client) => {
-  if (__queues) return __queues;
-
-  const opts = {
-    connection:new IORedis(redisUrl),
-    removeOnComplete: {
-      age: 60 * 60 * 16, // 16 hours
-    }
-  }
-
-  const db = new database.FilesystemDatabase("./work");
-
-  const rssFeedQueue = new Queue('feed', opts);
-  const pageCrawlerQueue = new Queue('pageCrawler', opts);
-  const summarizerQueue = new Queue('summarizer', opts);
-  const embeddingQueue = new Queue('embedding', opts);
-  const clustererQueue = new Queue('clusterer', opts);
-  const aiWriterQueue = new Queue('aiWriter', opts);
-  const flowProducer = new FlowProducer(opts);
-
-  __queues = {
-    rssFeedQueue,
-    pageCrawlerQueue,
-    summarizerQueue,
-    flowProducer,
-    embeddingQueue,
-    clustererQueue,
-    aiWriterQueue
-  }
-
-
+function setupworkers(db, client, opts) {
   // Setup the workers
   new Worker('feed', async (job) => {
     const { feed, total,chunkNum } = job.data;
@@ -131,7 +49,9 @@ module.exports.getQueues = async (client) => {
     const { article, feed, index } = job.data;
 
     const url = article.link;
-    await crawl(db, url);
+
+    const redisCrawler = new RedisCrawler(client, db);
+    await redisCrawler.crawl(url);
 
     //await summarizerQueue.add('summarize', { url, article });
   }, {
@@ -214,8 +134,243 @@ module.exports.getQueues = async (client) => {
     ...opts,
   });
 
+
+}
+
+module.exports.getQueues = async (client, workers = false) => {
+  if (__queues) return __queues;
+
+  const opts = {
+    connection:new IORedis(redisUrl),
+    removeOnComplete: {
+      age: 60 * 60 * 16, // 16 hours
+    }
+  }
+
+  const db = new database.FilesystemDatabase("./work");
+
+  const rssFeedQueue = new Queue('feed', opts);
+  const pageCrawlerQueue = new Queue('pageCrawler', opts);
+  const summarizerQueue = new Queue('summarizer', opts);
+  const embeddingQueue = new Queue('embedding', opts);
+  const clustererQueue = new Queue('clusterer', opts);
+  const aiWriterQueue = new Queue('aiWriter', opts);
+  const flowProducer = new FlowProducer(opts);
+
+  __queues = {
+    rssFeedQueue,
+    pageCrawlerQueue,
+    summarizerQueue,
+    flowProducer,
+    embeddingQueue,
+    clustererQueue,
+    aiWriterQueue
+  }
+
+
+  if (workers) {
+    setupworkers(db, client, opts);
+  }
+
   return __queues;
 
+
+}
+
+
+const configFile = process.argv[2];
+if (!configFile) {
+  console.error('Please specify a config file');
+  process.exit(1);
+}
+
+async function parseAndStoreFeed(feed, n) {
+  const queues = await index.getQueues(client);
+
+  const {url,name} = feed;
+  try {
+    const articles = await feedparser.parse(url, {
+      addmeta: true,
+    });
+
+    const latestArticles = _.shuffle(articles.slice(0, n));
+    logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
+
+    if (!latestArticles.length) {
+      logger.warn('there are no jobs for feed ' + feed.name);
+      return;
+    }
+
+
+
+    let first = true;
+    let i = 0;
+    const chunkedArticles = _.chunk(latestArticles, 20);
+    for (const chunk of chunkedArticles) {
+      const children = [];
+      for (const article of chunk) {
+        const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
+        const articleKey = `article:${feed.name}:${index}`;
+        const alreadyDoneKey = `done:${articleKey}`;
+        const alreadyDone = await client.exists(alreadyDoneKey);
+        if (alreadyDone) {
+          logger.debug('article already exists', articleKey);
+          continue;
+        }
+
+        if (first) {
+          const feedData = {
+            meta: article.meta,
+            ...feed,
+          }
+          await client.set(`feed:${name}`, JSON.stringify(feedData));
+          first = false;
+        }
+
+        if (article.link === undefined
+            || article.link === null
+            || article.link === '') {
+          logger.error(feed.name, 'article has no link', article);
+          return;
+        }
+
+        const url = article.link;
+
+        await client.set(articleKey, JSON.stringify(article));
+
+        children.push({
+          name: 'summarize',
+          queueName: queues.summarizerQueue.name,
+          data: { feed: feed.name, article, index, url, articleKey },
+          children: [
+            {
+              name: 'pageCrawler',
+              queueName: queues.pageCrawlerQueue.name,
+              data: { feed: feed.name, article, index, url },
+            },
+          ]
+        });
+
+
+      };
+
+      await queues.flowProducer.add({
+        name: feed.name,
+        queueName: queues.rssFeedQueue.name,
+        data: { feed: feed.name, time: new Date().toISOString(), chunkNum:i, total: chunk.length },
+        children
+      });
+      i++;
+
+
+    }
+
+  } catch (error) {
+    console.error('Error parsing and storing feed:', error);
+  }
+}
+
+
+function refeedArticles(articles) {
+  const latestArticles = articles.map( ({article,summary}) => {
+    if (summary) {
+      //const newContent = summary.summary + "<br/><br/>" + article.content;
+      //article.content = newContent;
+      //article.summary = `<![CDATA[${summary.summary}<br/><br/>${article.summary}]]>`;
+      //article.summary = "cheese";
+      const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
+      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
+
+      /*
+      category: [
+        {
+          name: 'Cheese',
+          scheme: 'https://example.com/category/cheese',
+          domain: 'https://example.com/',
+          term: 'cheese',
+        }
+      ]
+      */
+      article.category = summary.tags?.map( ({tag,confidence}) => {
+        return {
+          name: tag,
+          scheme: 'https://ttrss.inmytree.co.za/category/' + tag,
+          domain: 'https://ttrss.inmytree.co.za/',
+          term: tag,
+        }
+      });
+      return article;
+    } else {
+      return null;
+    }
+  }).filter( article => article !== null);
+  return latestArticles;
+}
+
+// Function to create a new Atom feed from the given articles.
+function createNewFeed(meta, feedUrl, articles) {
+  const feed = new Feed({
+    title: '[Refeed] ' + meta.title,
+    description: meta.description ?? "Refeed for " + meta.title,
+    id: feedUrl,
+    link: feedUrl,
+    updated: new Date(),
+    generator: 'rss-atom-feed-processor',
+  });
+
+  articles.forEach((article) => {
+    feed.addItem({
+      title: article.title,
+      id: article.guid + 'refeedy',
+      link: article.link,
+      description: article.description,
+      content: article.content,
+      //author: article['atom:author'] ?? article.author,
+      date: new Date(article.pubDate),
+      category: article.category,
+    });
+  });
+
+  //feed.addCategory('Technology');
+
+  return feed;
+}
+
+async function start() {
+
+  await client.connect();
+  const queues = await index.getQueues(client, true);
+
+  const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
+  const scheduleTimeSeconds = 1 * 60 * 60;
+
+  await Promise.all([
+    (async () => {
+      await Promise.all( config.aifeeds.map( async (aifeed) => {
+        while (true) {
+          logger.info(`[AIFEED] ${aifeed.name}`);
+          await summary.startSummariseFeeds(client, aifeed);
+          await new Promise( (resolve) => setTimeout(resolve, aifeed.scheduleTimeMinutes * 60 * 1000) );
+        }
+      }));
+    })(),
+    (async () => {
+      while (true) {
+
+        for (const feed of config.feeds) {
+          logger.info(`[REFEED] ${feed.name}`);
+          parseAndStoreFeed(feed, 1000);
+          //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });
+        }
+        await new Promise( (resolve) => setTimeout(resolve, scheduleTimeSeconds * 1000) );
+      }
+    })()
+  ]);
+  //parseAndStoreFeed(queues, '<url>').catch(console.log);
+}
+
+if (require.main === module) {
+  start().then(console.log);
 
 }
 
