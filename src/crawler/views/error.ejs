@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= article.readableArticle.title %></title>
+  <title>Error</title>
 </head>
 <body>
+  <h1><%= url %></h1>
+  <p><%= error %></p>
   <a href="/article/<%= parseInt(index) - 1 %>">Previous</a>
   <a href="/article/<%= parseInt(index) + 1 %>">Next</a>
-  <h1><%= article.readableArticle.title %></h1>
-  <p><%= article.url %></p>
-  <img src="<%= screenshot %>" alt="Screenshot">
-  <pre><%= article.readableArticle.textContent %></pre>
 </body>
 </html>

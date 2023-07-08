@@ -22,10 +22,15 @@ exports.getArticle = async (client, req, res) => {
     const index = parseInt(req.params.index, 10);
     const url = await findUrlFromIndex(client, index);
     console.log(`url: ${url}`);
+
+    const statusKey = `crawler:${url}`;
+    const status = await client.get(statusKey);
+    if (status != 'DONE') {
+      return res.render('error', { index, error:status, url });
+    }
+
     const article = await db.getPage(url);
-    console.log('article', article);
     const screenshotData = await db.getScreenshot(url);
-    console.log('screenshotData', screenshotData);
 
     if (!article || !screenshotData) {
       return res.status(404).send('Page not found');
