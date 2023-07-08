@@ -1,6 +1,7 @@
 const redis = require('redis');
 const fs = require('fs');
-const redisClient = require('./redisClient');
+const database = require('./database.js');
+const db = new database.FilesystemDatabase("./work");
 
 async function findUrlFromIndex(redisClient, index) {
   const keyFilter = `crawler:*`
@@ -16,24 +17,21 @@ async function findUrlFromIndex(redisClient, index) {
   return key.replace('crawler:', '');
 
 }
-exports.getArticle = async (req, res) => {
+exports.getArticle = async (client, req, res) => {
   try {
     const index = parseInt(req.params.index, 10);
-    const url = await findUrlFromIndex(redisClient, index);
+    const url = await findUrlFromIndex(client, index);
     console.log(`url: ${url}`);
-    const urlKey = `crawler:${url}`;
-    const screenshotKey = `screenshot:${url}`;
+    const article = await db.getPage(url);
+    console.log('article', article);
+    const screenshotData = await db.getScreenshot(url);
+    console.log('screenshotData', screenshotData);
 
-    const pageData = await redisClient.get(urlKey);
-    //const screenshotData = await redisClient.get(redis.commandOptions({returnBuffers:true}),screenshotKey);
-
-    if (!pageData) {
+    if (!article || !screenshotData) {
       return res.status(404).send('Page not found');
     }
 
-    const article = JSON.parse(pageData);
-    //const screenshot = `data:image/png;base64,${new Buffer(screenshotData).toString('base64')}`;
-    const screenshot = `data:image/png;base64`;
+    const screenshot = `data:image/png;base64,${new Buffer(screenshotData).toString('base64')}`;
 
     res.render('article', { index, article, screenshot });
   } catch (error) {
@@ -42,19 +40,11 @@ exports.getArticle = async (req, res) => {
   }
 };
 
-exports.getContent = async (req, res) => {
+exports.getContent = async (client, req, res) => {
   try {
     const index = parseInt(req.params.index, 10);
-    const url = await findUrlFromIndex(redisClient, index);
-    console.log(`url: ${url}`);
-    const urlKey = `crawler:${url}`;
-    const pageData = await redisClient.get(urlKey);
-
-    if (!pageData) {
-      return res.status(404).send('Page not found');
-    }
-
-    const article = JSON.parse(pageData);
+    const url = await findUrlFromIndex(client, index);
+    const article = await db.getPage(url);
 
     res.render('content', { article, index });
   } catch (error) {

@@ -8,7 +8,7 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
 const feeds = require('./feeds.js');
-const index = require('./index.js');
+const jobs = require('./jobs.js');
 const aifunctions = require('./aifunctions.js');
 const pLimit = require('p-limit');
 const limit = pLimit(3);
@@ -322,7 +322,7 @@ ${summary.summary}
 };
 
 async function startSummariseFeeds(client, aifeed) {
-  const queues = await index.getQueues(client);
+  const queues = await jobs.getQueues(client);
   const dateFrom = new Date(new Date().getTime() - aifeed.postsHistoryMinutes * 60 * 1000);
 
   let articles = [];

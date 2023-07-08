@@ -9,14 +9,14 @@ const { ExpressAdapter } = require('@bull-board/express');
 const redis = require('redis');
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const client = redis.createClient({url:redisUrl});
-const index = require('./index.js');
+const jobs = require('./jobs.js');
 
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.get('/article/:index', articleController.getArticle);
-app.get('/content/:index', articleController.getContent);
+app.get('/article/:index', articleController.getArticle.bind(null, client));
+app.get('/content/:index', articleController.getContent.bind(null, client));
 
 app.get('/feed/:name', async (req, res) => {
   const newFeedUrl = req.url;
@@ -58,7 +58,7 @@ const PORT = process.env.PORT || 3000;
 
 async function start() {
   await client.connect();
-  const queues = await index.getQueues(client);
+  const queues = await jobs.getQueues(client);
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath('/admin/queues');
   /*const { addQueue, removeQueue, setQueues, replaceQueues } =*/

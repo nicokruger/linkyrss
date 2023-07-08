@@ -10,13 +10,11 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 const database = require('./database.js');
 const python = require('./python.js');
-const refeed = require('./refeed.js');
 const cluster = require('./cluster.js');
 const feeds = require('./feeds.js');
 const _ = require('lodash');
 const feedparser = require('feedparser-promised');
 const { Feed, Category } = require('feed');
-const index = require('./index.js');
 const summary = require('./summarise.js');
 
 const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bullmq');
@@ -35,13 +33,6 @@ function setupworkers(db, client, opts) {
       const alreadyDoneKey = `done:${articleKey}`;
       await client.set(alreadyDoneKey, 'true');
     }
-
-    /*
-    const { feed, n } = job.data;
-    console.log('rssFeed', job.data);
-
-    await refeed.parseAndStoreFeed(feed, n);
-    */
 
   }, opts);
 
@@ -185,7 +176,7 @@ if (!configFile) {
 }
 
 async function parseAndStoreFeed(feed, n) {
-  const queues = await index.getQueues(client);
+  const queues = await module.exports.getQueues(client);
 
   const {url,name} = feed;
   try {
@@ -209,6 +200,11 @@ async function parseAndStoreFeed(feed, n) {
     for (const chunk of chunkedArticles) {
       const children = [];
       for (const article of chunk) {
+        console.log('article');
+        console.log('===========================')
+        console.log(JSON.stringify(article,null,2));
+        console.log('===========================')
+
         const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
         const articleKey = `article:${feed.name}:${index}`;
         const alreadyDoneKey = `done:${articleKey}`;
@@ -339,7 +335,7 @@ function createNewFeed(meta, feedUrl, articles) {
 async function start() {
 
   await client.connect();
-  const queues = await index.getQueues(client, true);
+  const queues = await module.exports.getQueues(client, true);
 
   const config = JSON.parse(require('fs').readFileSync(configFile, 'utf8'));
   const scheduleTimeSeconds = 1 * 60 * 60;
