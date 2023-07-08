@@ -135,6 +135,59 @@ module.exports.setup_tags_creator = function (in_tags) {
 
 }
 
+module.exports.setup_link_vote_comment_extractors = function (data) {
+  return function (functions, available_functions) {
+    functions.push({
+      name: "link_extractor",
+      description: "Extracts a link and contextual text from a HTML",
+      parameters: {
+        "type": "object",
+        "properties": {
+          "link": {
+            "type": "string",
+            "description":"The URL of the article"
+          },
+          "text": {
+            "type": "string",
+            "description": "The contextual text describing what the URL points to, suitable for a document heading, for example 'Comments'"
+          }
+        },
+        "required": ["link", "text"]
+      }
+    });
+    functions.push({
+      name: "vote_and_comment_extractor",
+      description: "Extracts the number of votes and comments from HTML",
+      parameters: {
+        "type": "object",
+        "properties": {
+          "votes": {
+            "type": "number"
+          },
+          "comments": {
+            "type": "number"
+          }
+        },
+        "required": ["votes", "comments"]
+      }
+    });
+
+
+    available_functions['link_extractor'] =  function ({link, text}) {
+      data.links.push({link, text});
+      return `Set link and text`;
+    }
+
+    available_functions['vote_and_comment_extractor'] =  function ({votes, comments}) {
+      data.votes = votes;
+      data.comments = comments;
+      return `Set votes and comments`;
+    }
+  }
+
+}
+
+
 
 module.exports.setup_post_voter = function (vote) {
   return function (functions, available_functions) {

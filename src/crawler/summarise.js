@@ -90,6 +90,7 @@ async function get_llm_raw(
   function_call = "auto",
   out_prompt = null,
   model = "gpt-3.5-turbo-16k",
+  temperature = undefined
 ) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -102,6 +103,9 @@ async function get_llm_raw(
     prompt = prompt.replace(`{${k}}`, inputs[k]);
   }
   if (out_prompt) out_prompt.push(prompt);
+  //console.log('==============');
+  //console.log(prompt);
+  //console.log('==============');
 
   let sleep = 2;
   let num_tries = 7;
@@ -158,6 +162,7 @@ async function get_llm_raw(
         messages,
         functions,
         function_call: functions ? function_call : undefined,
+        temperature
       });
 
       const resp = await Promise.race([chatCompletionPromise, timeouters]);
@@ -229,9 +234,6 @@ async function get_llm_raw(
     }
   }
 
-  console.log(`  function called ${aifunctions.group_called} times`);
-  aifunctions.group_called = 0;
-
   if (last_error) {
     // print the error stack trace
       if (last_error.response?.data) {
@@ -270,6 +272,52 @@ async function get_llm_tags(url, content) {
   return tags;
 
 }
+
+async function get_urls_comments_and_votes(content) {
+  const template = `from the following html:
+
+\`\`\`html
+{content}
+\`\`\`
+
+
+identify:
+ - all links plus contextual text describing the links
+ - the number of votes, if applicable
+ - the number of comments, if applicable
+`;
+  const functiondata = { functions: [], available_functions: {} };
+  const data = {
+    links:[],
+    comments:0,
+    votes:0,
+  };
+  aifunctions.setup_link_vote_comment_extractors( data )(functiondata.functions, functiondata.available_functions);
+
+  const inputs = {
+    content
+  }
+
+  const dprompt = [];
+  const output = await get_llm_raw(
+    functiondata,
+    "",
+    template,
+    [],
+    inputs,
+    [],
+    "auto",
+    temperature = 0
+  );
+
+  //console.log('===================');
+  //console.log(dprompt);
+  //console.log('===================');
+
+  return data;
+
+}
+
 
 async function summarise_url(url, content) {
   logger.debug(`[summarise_url] ${url}`);
@@ -506,6 +554,7 @@ module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
 module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;
+module.exports.get_urls_comments_and_votes = get_urls_comments_and_votes;
 
 if (require.main == module) {
   const redis = require('redis');
@@ -513,15 +562,25 @@ if (require.main == module) {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
   const client = redis.createClient({url:redisUrl});
 
+  /*
   console.log('hi');
   client.connect().then( async () => {
     console.log('connected');
 
-    const feedwriter = new feeds.FeedWriter('Test', client);
-    await feedwriter.clearFeed();
+    //const feedwriter = new feeds.FeedWriter('Test', client);
+    //await feedwriter.clearFeed();
 
-    await aiWriter(p, feedwriter, client);
+    //await aiWriter(p, feedwriter, client);
   });
+  */
+
+  const content = `<p>Link URL: <a href="https://www.techspot.com/news/99326-youll-need-appointment-head-scan-prescription-data-buy.html" rel="noopener noreferrer" target="_blank">https://www.techspot.com/news/99326-youll-need-appointment-head-scan-prescription-data-buy.html</a></p>
+                <p>Comments URL: <a href="https://tildes.net/~tech/17t6/apple_vision_pro_headset_to_require_head_scan_and_vision_perscription" rel="noopener noreferrer" target="_blank">https://tildes.net/~tech/17t6/apple_vision_pro_headset_to_require_head_scan_and_vision_perscription</a></p>
+                <p>Votes: 5</p>
+                <p>Comments: 10</p>
+
+  `;
+  get_urls_comments_and_votes(content).then(console.log);
 
 
 }

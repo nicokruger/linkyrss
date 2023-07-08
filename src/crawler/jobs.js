@@ -38,11 +38,26 @@ function setupworkers(db, client, opts) {
 
   new Worker('pageCrawler', async (job) => {
     const { article, feed, index } = job.data;
+    //console.log(article);
 
-    const url = article.link;
+    const urls = [{heading:"Article",link:article.link}];
 
-    const redisCrawler = new RedisCrawler(client, db);
-    await redisCrawler.crawl(url);
+    let extra_data = {links:[]};
+    if (article.description) {
+      extra_data = await summarise.get_urls_comments_and_votes(article.description);
+    }
+
+    for (const link of extra_data.links) {
+      urls.push({heading:link.text,link:link.link});
+    }
+
+    for (const url of urls) {
+      logger.info(`Crawling [${url.heading}]: ${url.link}`);
+      const redisCrawler = new RedisCrawler(client, db);
+      await redisCrawler.crawl(url.link);
+    }
+
+    return {urls,extra_data};
 
     //await summarizerQueue.add('summarize', { url, article });
   }, {
@@ -51,19 +66,33 @@ function setupworkers(db, client, opts) {
   });
 
   new Worker('summarizer', async (job) => {
-    //console.log('summarizer', job.data);
-    const { url, article, articleKey } = job.data;
-
-    const page = await db.getPage(url);
-    const key = `summary:${page.url}`;
     const alreadyExists = await client.exists(key);
     if (alreadyExists) return articleKey;
 
+    const data = await job.getChildrenValues();
+
+    const {urls,extra_data} = Object.values(data)[0];
+    const { article, articleKey } = job.data;
+
+    let _urls = [];
+    let content;
+    for (const url of urls) {
+      if (_urls.includes(url.link)) continue;
+
+      const page = await db.getPage(url.link);
+      content += "### " + url.heading + "\n" + page.pandocCrawl.readableArticle.textContent + "\n\n\n";
+
+      _urls.push(url.link);
+    }
+
     const summary = await summarise.summarise_url(
       article.link,
-      page.pandocCrawl.readableArticle.textContent
+      content
     );
 
+    summary.extra_data = extra_data;
+
+    const key = `summary:${page.url}`;
     await client.set(key, JSON.stringify(summary));
 
     return articleKey;
@@ -200,10 +229,10 @@ async function parseAndStoreFeed(feed, n) {
     for (const chunk of chunkedArticles) {
       const children = [];
       for (const article of chunk) {
-        console.log('article');
-        console.log('===========================')
-        console.log(JSON.stringify(article,null,2));
-        console.log('===========================')
+        //console.log('article');
+        //console.log('===========================')
+        //console.log(JSON.stringify(article,null,2));
+        //console.log('===========================')
 
         const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
         const articleKey = `article:${feed.name}:${index}`;
