@@ -530,5 +530,7 @@ function cleanTitle(title) {
   title = title.trim();
   title = title.replace(/^"/,'');
   title = title.replace(/"$/,'');
+  title = title.replace(/^Title: /, '');
+  title = title.replace(/^"/,'');
   return title;
 }
