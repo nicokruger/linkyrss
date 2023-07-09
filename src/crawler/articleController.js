@@ -19,8 +19,7 @@ async function findUrlFromIndex(redisClient, index) {
 }
 exports.getArticle = async (client, req, res) => {
   try {
-    const index = parseInt(req.params.index, 10);
-    const url = await findUrlFromIndex(client, index);
+    const url = req.params.url;
     console.log(`url: ${url}`);
 
     const statusKey = `crawler:${url}`;
@@ -44,6 +43,34 @@ exports.getArticle = async (client, req, res) => {
     res.status(500).send('Internal server error');
   }
 };
+
+exports.getUrl = async (client, req, res) => {
+  try {
+    const url = req.params.url;
+    console.log(`url: ${url}`);
+
+    const statusKey = `crawler:${url}`;
+    const status = await client.get(statusKey);
+    if (status != 'DONE') {
+      return res.render('error', { error:status, url });
+    }
+
+    const article = await db.getPage(url);
+    const screenshotData = await db.getScreenshot(url);
+
+    if (!article || !screenshotData) {
+      return res.status(404).send('Page not found');
+    }
+
+    const screenshot = `data:image/png;base64,${new Buffer(screenshotData).toString('base64')}`;
+
+    res.render('url', { article, screenshot });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+};
+
 
 exports.getContent = async (client, req, res) => {
   try {

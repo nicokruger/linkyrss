@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= article.readableArticle.title %></title>
+</head>
+<body>
+  <h1><%= article.readableArticle.title %></h1>
+  <p><%= article.url %></p>
+  <img src="<%= screenshot %>" alt="Screenshot">
+
+  <h3>Readable Original</h3>
+  <pre><%= article.readableArticle.textContent %></pre>
+
+  <h3>Readable Pandoc</h3>
+  <pre><%= article.pandocCrawl.readableArticle.textContent %></pre>
+
+  <h3>Original</h3>
+  <pre><%= article.content %></pre>
+
+</body>
+</html>

@@ -70,6 +70,8 @@ class Crawler {
   }
 
   async waitTillHTMLRendered(page, timeout = 60000) {
+    //const maxBodyHtmlSize = 5421225;
+    const maxBodyHtmlSize = 5 * 1024 * 1024;
     const checkDurationMsecs = 1000;
     const maxChecks = timeout / checkDurationMsecs;
     let lastHTMLSize = 0;
@@ -92,6 +94,14 @@ class Crawler {
 
       if(countStableSizeIterations >= minStableSizeIterations) {
         logger.debug(`[${this.url}] Page rendered fully..`);
+        break;
+      }
+
+      if (currentHTMLSize > maxBodyHtmlSize) {
+        logger.debug(`[${this.url}] Page reached size limit [${currentHTMLSize}], stop rendering.`);
+        // stop rendering
+        page.evaluate(() => window.stop());
+        page.setJavaScriptEnabled(false);
         break;
       }
 

@@ -17,6 +17,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 app.get('/article/:index', articleController.getArticle.bind(null, client));
+app.get('/url/:url', articleController.getUrl.bind(null, client));
 app.get('/content/:index', articleController.getContent.bind(null, client));
 
 app.get('/feed/:name', async (req, res) => {
