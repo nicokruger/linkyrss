@@ -12,6 +12,8 @@ const jobs = require('./jobs.js');
 const aifunctions = require('./aifunctions.js');
 const pLimit = require('p-limit');
 const limit = pLimit(3);
+const { get_encoding, encoding_for_model } = require("@dqbd/tiktoken");
+
 
 function formatGroupedPost({summary,article}) {
   //return `### ${article.title}\nArticle url: ${article.link}\n${summary.summary}\n\n`;
@@ -80,6 +82,26 @@ async function get_llm_summary(chain, inputs) {
   return content.trim();
 }
 
+function shorten_prompt(prompt, opts) {
+  const enc = encoding_for_model("gpt-3.5-turbo");
+  const tokens = enc.encode(prompt);
+
+  let current_tokens = tokens.length;
+  while (current_tokens > opts.max_tokens) {
+    const diff = current_tokens - opts.max_tokens;
+    const n = Math.max(diff * 3.2,5);
+    // slice of the last n chars
+    prompt = prompt.slice(0,prompt.length - parseInt(n));
+    const tokens = enc.encode(prompt);
+    current_tokens = tokens.length;
+    logger.warn(`Shortening prompt by ${n} chars to ${current_tokens} tokens`);
+  }
+  enc.free();
+
+  return prompt;
+
+}
+
 async function get_llm_raw(
   functiondata,
   system,
@@ -102,6 +124,12 @@ async function get_llm_raw(
   for (const k in inputs) {
     prompt = prompt.replace(`{${k}}`, inputs[k]);
   }
+
+  const shorten_opts = {
+    max_tokens: 13000,
+    model
+  }
+  prompt = shorten_prompt(prompt, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
   //console.log('==============');
   //console.log(prompt);
@@ -557,10 +585,10 @@ module.exports.get_llm_tags = get_llm_tags;
 module.exports.get_urls_comments_and_votes = get_urls_comments_and_votes;
 
 if (require.main == module) {
-  const redis = require('redis');
-  const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688749525576.json').toString());
-  const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
-  const client = redis.createClient({url:redisUrl});
+  //const redis = require('redis');
+  //const p = JSON.parse(fs.readFileSync('/tmp/clustered_posts_1688749525576.json').toString());
+  //const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
+  //const client = redis.createClient({url:redisUrl});
 
   /*
   console.log('hi');
@@ -580,8 +608,13 @@ if (require.main == module) {
                 <p>Comments: 10</p>
 
   `;
-  get_urls_comments_and_votes(content).then(console.log);
+  //get_urls_comments_and_votes(content).then(console.log);
+  //const enc = encoding_for_model("gpt-3.5-turbo");
+  //const tokens = enc.encode(content);
+  //console.log('TOKENS', tokens.length);
+  //enc.free();
 
+  get_llm_raw({}, "", content, []).then(console.log);
 
 }
   
