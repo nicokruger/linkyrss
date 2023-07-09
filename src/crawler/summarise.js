@@ -43,6 +43,8 @@ const template = `You are an expert news reporter. Within the block below is the
 
 Please summarise the contents of the provided page. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
 
+Split your output into four sections: Article, Related, Comments and References. Provide simple Markdown formatting.
+
 `
 
 async function get_llm_summary(chain, inputs) {
@@ -349,12 +351,6 @@ identify:
 
 async function summarise_url(url, content) {
   logger.debug(`[summarise_url] ${url}`);
-  const prompt = PromptTemplate.fromTemplate(template, {my_url: url, content: content});
-  const llm = new ChatOpenAI({
-    modelName:'gpt-3.5-turbo-16k',
-    openAIApiKey: process.env.OPENAI_API_KEY,
-  });
-  const chain = new LLMChain({llm, prompt});
 
   const data = {};
   const inputs = {
@@ -362,7 +358,12 @@ async function summarise_url(url, content) {
     my_url: url,
     content,
   }
-  data.summary = await get_llm_summary(chain, inputs);
+  //get_llm_raw({}, "", content, []).then(console.log);
+  data.summary = await get_llm_raw({}, "", template, [], inputs);
+  console.log('have summary', data.summary);
+
+  throw new Error('stop');
+
 
   const tags = await get_llm_tags(url, content);
   data.tags = tags;
