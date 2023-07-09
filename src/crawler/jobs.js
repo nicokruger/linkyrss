@@ -421,3 +421,5 @@ if (false && require.main === module) {
     //console.log('media', page.media);
   });
 }
+module.exports.refeedArticles = refeedArticles;
+module.exports.createNewFeed = createNewFeed;
