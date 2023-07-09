@@ -28,8 +28,8 @@ app.get('/feed/:name', async (req, res) => {
   }
 
   const feedInfo = JSON.parse(await client.get(key));
-  const feedArticles = refeedArticles(await feeds.getFeed(client, req.params.name));
-  const newFeed = createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
+  const feedArticles = jobs.refeedArticles(await feeds.getFeed(client, req.params.name));
+  const newFeed = jobs.createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
   const atomXml = newFeed.atom1();
 
   res.header('Content-Type', 'application/atom+xml');
