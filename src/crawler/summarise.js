@@ -8,7 +8,7 @@ const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
 const feeds = require('./feeds.js');
-const index = require('./index.js');
+const jobs = require('./jobs.js');
 const aifunctions = require('./aifunctions.js');
 const pLimit = require('p-limit');
 const limit = pLimit(3);
@@ -90,6 +90,7 @@ async function get_llm_raw(
   function_call = "auto",
   out_prompt = null,
   model = "gpt-3.5-turbo-16k",
+  temperature = undefined
 ) {
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
@@ -102,6 +103,9 @@ async function get_llm_raw(
     prompt = prompt.replace(`{${k}}`, inputs[k]);
   }
   if (out_prompt) out_prompt.push(prompt);
+  //console.log('==============');
+  //console.log(prompt);
+  //console.log('==============');
 
   let sleep = 2;
   let num_tries = 7;
@@ -158,6 +162,7 @@ async function get_llm_raw(
         messages,
         functions,
         function_call: functions ? function_call : undefined,
+        temperature
       });
 
       const resp = await Promise.race([chatCompletionPromise, timeouters]);
@@ -229,9 +234,6 @@ async function get_llm_raw(
     }
   }
 
-  console.log(`  function called ${aifunctions.group_called} times`);
-  aifunctions.group_called = 0;
-
   if (last_error) {
     // print the error stack trace
       if (last_error.response?.data) {
@@ -270,6 +272,52 @@ async function get_llm_tags(url, content) {
   return tags;
 
 }
+
+async function get_urls_comments_and_votes(content) {
+  const template = `from the following html:
+
+\`\`\`html
+{content}
+\`\`\`
+
+
+identify:
+ - all links plus contextual text describing the links
+ - the number of votes, if applicable
+ - the number of comments, if applicable
+`;
+  const functiondata = { functions: [], available_functions: {} };
+  const data = {
+    links:[],
+    comments:0,
+    votes:0,
+  };
+  aifunctions.setup_link_vote_comment_extractors( data )(functiondata.functions, functiondata.available_functions);
+
+  const inputs = {
+    content
+  }
+
+  const dprompt = [];
+  const output = await get_llm_raw(
+    functiondata,
+    "",
+    template,
+    [],
+    inputs,
+    [],
+    "auto",
+    temperature = 0
+  );
+
+  //console.log('===================');
+  //console.log(dprompt);
+  //console.log('===================');
+
+  return data;
+
+}
+
 
 async function summarise_url(url, content) {
   logger.debug(`[summarise_url] ${url}`);
@@ -321,31 +369,20 @@ ${summary.summary}
 
 };
 
-async function startSummariseFeeds(client) {
-  const queues = await index.getQueues(client);
-  const dateFrom = new Date();
-  // 4 hours ago
-  dateFrom.setHours(dateFrom.getHours() - 24);
-  //dateFrom.setDate(dateFrom.getDate() - 1);
+async function startSummariseFeeds(client, aifeed) {
+  const queues = await jobs.getQueues(client);
+  const dateFrom = new Date(new Date().getTime() - aifeed.postsHistoryMinutes * 60 * 1000);
 
-  //const feedwriter = new feeds.FeedWriter('Test', client, queues);
-  //await feedwriter.clearFeed();
-  /*
-  feedwriter.writeFeedMeta({
-    summary:true,
-    meta:{
-      title:'Test',
-      description:'Test',
-    }
-  });
-  */
+  let articles = [];
+  for (const source of aifeed.sources) {
+    let theseArticles = await client.keys(`article:${source}:*`);
+    // filter out articles that are too old
+    theseArticles = theseArticles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
+    theseArticles = theseArticles.map( a => a.replace('article:', '') );
 
-
-  let articles = await client.keys('article:*');
-  // filter out articles that are too old
-  articles = articles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
-  articles = articles.map( a => a.replace('article:', '') );
-  logger.debug('ai writer: have articles', articles.length);
+    articles = articles.concat(theseArticles);
+  }
+  logger.info(`ai writer: feed ${aifeed.name} has ${articles.length} articles for the last ${aifeed.postsHistoryMinutes} minutes`);
 
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
@@ -355,17 +392,17 @@ async function startSummariseFeeds(client) {
   const flow = await queues.flowProducer.add({
     name: 'aiWriter',
     queueName: queues.aiWriterQueue.name,
-    data: { feed: 'Test', articles, outPostsName },
+    data: { feed: aifeed.name, articles, outPostsName },
     children: [
       {
         name: 'cluster',
         queueName: queues.clustererQueue.name,
-        data: { inFileName:outFileName, outPostsName },
+        data: { feed: aifeed.name, inFileName:outFileName, outPostsName },
         children: [
           {
             name: 'embedding',
             queueName: queues.embeddingQueue.name,
-            data: { inFileName, outFileName },
+            data: { feed: aifeed.name, inFileName, outFileName },
           }
         ]
       }
@@ -390,16 +427,16 @@ For example:
 \`\`\`
 ## In the news - News and more
 
-*A Slack clone in 5 lines of bash*
+### A Slack clone in 5 lines of bash
 A minimalist chat system called Suc, built with only five lines of bash, is gaining attention. Suc offers core features like real-time chat, file sharing, access control, automation, integration, data encryption, and user authentication. The simplicity and efficiency of Suc are highlighted compared to other chat systems like Slack and Mattermost. [source](example.com)
 
-*Midweek Movie Free Talk*
+### Midweek Movie Free Talk
 Users on Tildes discuss various movies, including "The Gangster, The Cop, The Devil," where Sylvester Stallone is reportedly planning a US version. Additionally, disappointment with recent Pixar films, particularly "Elemental," is expressed due to weak storytelling and uninspired themes. [source](example.com)
 
-*Injection of kidney protein improves working memory in monkeys*
+### Injection of kidney protein improves working memory in monkeys
 A recent study published in the journal Nature Aging reveals that a single injection of the klotho protein improves cognitive function in older monkeys. The protein, naturally produced by the kidney, has been associated with health benefits and better performance in thinking and memory tests in humans. This study paves the way for potential advancements in rejuvenating brain function in older adults. [source](example.com)
 
-*Lossy Image Formats*
+### Lossy Image Formats
 A comprehensive page explores various lossy image formats as alternatives to the de-facto standard JPEG. The examined formats include JPEG 2000, JPEG XR, JPEG XS, JPEG XL, WEBP, FLIF, BPG, HEIF/HEIC, and AVIF. The article discusses their development, features, and patent uncertainties. AVIF is recommended as the best option due to its performance, despite some limitations on mobile browsers. [source](example.com)source
 ....
 one for each article
@@ -479,13 +516,13 @@ Provide simple markdown: `;
       console.log('--------------------------');
       console.log(new_article);
 
-      const title = await get_llm_raw(
+      const title = cleanTitle(await get_llm_raw(
         null, "",
         "Provide a suitable title for this article that is written around a theme: {theme}\n\n{article}",
         [],
         {article: new_article, theme},
         []
-      );
+      ));
 
       const idx = new Date().toISOString();
 
@@ -517,6 +554,7 @@ module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;
 module.exports.get_llm_raw = get_llm_raw;
 module.exports.get_llm_tags = get_llm_tags;
+module.exports.get_urls_comments_and_votes = get_urls_comments_and_votes;
 
 if (require.main == module) {
   const redis = require('redis');
@@ -524,16 +562,34 @@ if (require.main == module) {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
   const client = redis.createClient({url:redisUrl});
 
+  /*
   console.log('hi');
   client.connect().then( async () => {
     console.log('connected');
 
-    const feedwriter = new feeds.FeedWriter('Test', client);
-    await feedwriter.clearFeed();
+    //const feedwriter = new feeds.FeedWriter('Test', client);
+    //await feedwriter.clearFeed();
 
-    await aiWriter(p, feedwriter, client);
+    //await aiWriter(p, feedwriter, client);
   });
+  */
+
+  const content = `<p>Link URL: <a href="https://www.techspot.com/news/99326-youll-need-appointment-head-scan-prescription-data-buy.html" rel="noopener noreferrer" target="_blank">https://www.techspot.com/news/99326-youll-need-appointment-head-scan-prescription-data-buy.html</a></p>
+                <p>Comments URL: <a href="https://tildes.net/~tech/17t6/apple_vision_pro_headset_to_require_head_scan_and_vision_perscription" rel="noopener noreferrer" target="_blank">https://tildes.net/~tech/17t6/apple_vision_pro_headset_to_require_head_scan_and_vision_perscription</a></p>
+                <p>Votes: 5</p>
+                <p>Comments: 10</p>
+
+  `;
+  get_urls_comments_and_votes(content).then(console.log);
 
 
 }
   
+function cleanTitle(title) {
+  title = title.trim();
+  title = title.replace(/^"/,'');
+  title = title.replace(/"$/,'');
+  title = title.replace(/^Title: /, '');
+  title = title.replace(/^"/,'');
+  return title;
+}
