@@ -86,11 +86,18 @@ function setupworkers(db, client, opts) {
       _urls.push(url.link);
     }
 
+    console.log('======= content =====');
+    console.log(content);
+
+
     const summary = await summarise.summarise_url(
       article.link,
       content
     );
-    console.log('have summary', summary.summary);
+    console.log('======= summary =====');
+    console.log(summary.summary);
+
+    throw new Error('stop');
 
     summary.extra_data = extra_data;
 

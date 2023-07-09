@@ -362,9 +362,6 @@ async function summarise_url(url, content) {
   data.summary = await get_llm_raw({}, "", template, [], inputs);
   console.log('have summary', data.summary);
 
-  throw new Error('stop');
-
-
   const tags = await get_llm_tags(url, content);
   data.tags = tags;
 
