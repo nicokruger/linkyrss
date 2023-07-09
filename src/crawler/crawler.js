@@ -202,8 +202,8 @@ class Crawler {
       readableArticle,
     }
 
-    console.log('======= readable text content =======');
-    console.log(readableArticle.textContent);
+    //console.log('======= readable text content =======');
+    //console.log(readableArticle.textContent);
 
     //throw new Error('plox');
 

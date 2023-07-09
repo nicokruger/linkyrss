@@ -138,9 +138,9 @@ async function get_llm_raw(
   }
   prompt = shorten_prompt(prompt, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
-  console.log('==============');
-  console.log(prompt);
-  console.log('==============');
+  //console.log('==============');
+  //console.log(prompt);
+  //console.log('==============');
 
   let sleep = 2;
   let num_tries = 7;
@@ -405,6 +405,7 @@ async function startSummariseFeeds(client, aifeed) {
   let articles = [];
   for (const source of aifeed.sources) {
     let theseArticles = await client.keys(`article:${source}:*`);
+    logger.info(`ai writer: feed ${source} has ${theseArticles.length} articles`);
     // filter out articles that are too old
     theseArticles = theseArticles.filter(a => a.split(':').slice(2,4) > dateFrom.toISOString());
     theseArticles = theseArticles.map( a => a.replace('article:', '') );
@@ -505,7 +506,7 @@ Provide simple markdown: `;
       if (!posts.length) {
         throw new Error('no posts for cluster');
       }
-      console.log('PLOX');
+      //console.log('PLOX');
       if (posts.length < linksonly.length) {
         let missingLinks = linksonly.filter( l => !posts.map( a => a.article.link ).includes(l) );
         //console.log('ML0', missingLinks);
@@ -521,7 +522,7 @@ Provide simple markdown: `;
           title:p.article.title
         }
       });
-      console.log('links', links);
+      //console.log('links', links);
       
       const inputs = {
         theme,
@@ -541,9 +542,9 @@ Provide simple markdown: `;
 
         //{"name":"group_or_regroup_article"}
       );
-      console.log(debug_prompt[0]);
-      console.log('--------------------------');
-      console.log(new_article);
+      //console.log(debug_prompt[0]);
+      //console.log('--------------------------');
+      //console.log(new_article);
 
       const title = cleanTitle(await get_llm_raw(
         null, "",
@@ -555,7 +556,7 @@ Provide simple markdown: `;
 
       const idx = new Date().toISOString();
 
-      console.log('write article', title);
+      //console.log('write article', title);
       //const articleContents = new_article + "<br/><pre>" + debug_prompt[0] + "</pre>";
       const articleContents = new_article;
       await feedwriter.writeArticle(

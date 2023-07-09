@@ -34,7 +34,7 @@ for key in article_keys:
     articlestr = client.get(key)
     article = json.loads(articlestr.decode('utf-8'))
     print(article['link'])
-    summary_key = "summary:" + article['link']
+    summary_key = "summary:" + key
     summarystr = client.get(summary_key)
     if summarystr is None:
         continue
