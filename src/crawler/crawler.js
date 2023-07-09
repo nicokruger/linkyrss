@@ -195,12 +195,17 @@ class Crawler {
     logger.debug(`[${this.url}] pandoc html -> readable`);
     const readableArticle = await this.extractReadableContent(contents);
 
-    const md5Contents = (await fs.readFile(tmpMdFilename)).toString();
+    const mdContents = (await fs.readFile(tmpMdFilename)).toString();
     const pandocCrawl = {
-      md5Contents,
+      mdContents,
       contents: contents.toString(),
       readableArticle,
     }
+
+    console.log('======= readable text content =======');
+    console.log(readableArticle.textContent);
+
+    //throw new Error('plox');
 
     await fs.unlink(tmpHtmlFilename);
     await fs.unlink(tmpMdFilename);
