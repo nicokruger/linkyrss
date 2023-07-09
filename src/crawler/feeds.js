@@ -7,7 +7,7 @@ async function getFeed(client, name) {
   const latestArticlesKeys = await client.keys(`article:${name}:*`);
   const latestArticles = (await Promise.all(latestArticlesKeys.map( async (key, index) => {
     const article = JSON.parse(await client.get(key));
-    const summaryKey = `summary:${article.link}`;
+    const summaryKey = `summary:${article.articleKey}`;
     const summary = JSON.parse(await client.get(summaryKey));
     if (summary) {
       return {article,summary};

@@ -66,13 +66,14 @@ function setupworkers(db, client, opts) {
   });
 
   new Worker('summarizer', async (job) => {
+    const { article, articleKey } = job.data;
+    const key = `summary:${articleKey}`;
+
     const alreadyExists = await client.exists(key);
     if (alreadyExists) return articleKey;
 
     const data = await job.getChildrenValues();
-
     const {urls,extra_data} = Object.values(data)[0];
-    const { article, articleKey } = job.data;
 
     let _urls = [];
     let content;
@@ -89,10 +90,10 @@ function setupworkers(db, client, opts) {
       article.link,
       content
     );
+    console.log('have summary', summary.summary);
 
     summary.extra_data = extra_data;
 
-    const key = `summary:${page.url}`;
     await client.set(key, JSON.stringify(summary));
 
     return articleKey;
@@ -144,7 +145,7 @@ function setupworkers(db, client, opts) {
       summary:true,
       meta:{
         title:'Test',
-	update:new Date().toISOString(),
+        update:new Date().toISOString(),
         description:'Test',
       }
     });
@@ -242,6 +243,8 @@ async function parseAndStoreFeed(feed, n) {
           logger.debug('article already exists', articleKey);
           continue;
         }
+
+        article.articleKey = articleKey;
 
         if (first) {
           const feedData = {
