@@ -2,6 +2,7 @@ const { marked } = require('marked');
 const _ = require('lodash');
 const summarise = require('./summarise');
 const { Feed, Category } = require('feed');
+const config = require('./config.js');
 
 async function getFeed(client, name) {
   const latestArticlesKeys = await client.keys(`article:${name}:*`);
@@ -110,8 +111,71 @@ module.exports.getFeedArticles = async function (client, feedName) {
 
 }
 
+function refeedArticles(articles) {
+  const latestArticles = articles.map( ({article,summary}) => {
+    if (summary) {
+
+
+      const html = marked.parse(cleanMarkdown(summary.summary));
+      const summaryHtml = `<hr/><h3>AI Summary</h3>${html}`;
+      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
+
+      //const debugArticle = config.baseUrl + '/article/' + encodeURIComponent(article.guid ?? article.id);
+      const debugArticle = config.baseUrl + '/article/' + encodeURIComponent(article.articleKey);
+      const debugLink = config.baseUrl + '/url/' + encodeURIComponent(article.link);
+      article.content += `<br/><br/><a href="${debugArticle}">Debug Article</a>`;
+      article.content += `<br/><br/><a href="${debugLink}">Debug Link</a>`;
+
+      article.category = summary.tags?.map( ({tag,confidence}) => {
+        return {
+          name: tag,
+          scheme: 'https://ttrss.inmytree.co.za/category/' + tag,
+          domain: 'https://ttrss.inmytree.co.za/',
+          term: tag,
+        }
+      });
+      return article;
+    } else {
+      return null;
+    }
+  }).filter( article => article !== null);
+  return latestArticles;
+}
+
+// Function to create a new Atom feed from the given articles.
+function createNewFeed(meta, feedUrl, articles) {
+  const feed = new Feed({
+    title: '[Refeed] ' + meta.title,
+    description: meta.description ?? "Refeed for " + meta.title,
+    id: feedUrl,
+    link: feedUrl,
+    updated: new Date(),
+    generator: 'rss-atom-feed-processor',
+  });
+
+  articles.forEach((article) => {
+    feed.addItem({
+      title: article.title,
+      id: article.guid + 'refeedy',
+      link: article.link,
+      description: article.description,
+      content: article.content,
+      //author: article['atom:author'] ?? article.author,
+      date: new Date(article.pubDate),
+      category: article.category,
+    });
+  });
+
+  //feed.addCategory('Technology');
+
+  return feed;
+}
+
+
 module.exports.FeedWriter = FeedWriter;
 module.exports.getFeed = getFeed;
+module.exports.refeedArticles = refeedArticles;
+module.exports.createNewFeed = createNewFeed;
 
 
 function cleanMarkdown(md) {

@@ -4,19 +4,19 @@ const path = require('path');
 const articleController = require('./articleController');
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
-const feeds = require('./feeds.js');
 //const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 const redis = require('redis');
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379'
 const client = redis.createClient({url:redisUrl});
 const jobs = require('./jobs.js');
+const feeds = require('./feeds.js');
 
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-app.get('/article/:index', articleController.getArticle.bind(null, client));
+app.get('/article/:articleKey', articleController.getArticle.bind(null, client));
 app.get('/url/:url', articleController.getUrl.bind(null, client));
 app.get('/content/:index', articleController.getContent.bind(null, client));
 
@@ -29,8 +29,8 @@ app.get('/feed/:name', async (req, res) => {
   }
 
   const feedInfo = JSON.parse(await client.get(key));
-  const feedArticles = jobs.refeedArticles(await feeds.getFeed(client, req.params.name));
-  const newFeed = jobs.createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
+  const feedArticles = feeds.refeedArticles(await feeds.getFeed(client, req.params.name));
+  const newFeed = feeds.createNewFeed(feedInfo.meta, newFeedUrl, feedArticles);
   const atomXml = newFeed.atom1();
 
   res.header('Content-Type', 'application/atom+xml');

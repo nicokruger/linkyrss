@@ -19,25 +19,23 @@ async function findUrlFromIndex(redisClient, index) {
 }
 exports.getArticle = async (client, req, res) => {
   try {
-    const url = req.params.url;
-    console.log(`url: ${url}`);
+    const key = req.params.articleKey;
+    console.log(`key: ${key}`);
 
-    const statusKey = `crawler:${url}`;
-    const status = await client.get(statusKey);
-    if (status != 'DONE') {
-      return res.render('error', { index, error:status, url });
+    if (!await client.exists(key)) {
+      return res.status(404).send('Article not found');
     }
+    const article = JSON.parse(await client.get(key));
 
-    const article = await db.getPage(url);
-    const screenshotData = await db.getScreenshot(url);
-
-    if (!article || !screenshotData) {
-      return res.status(404).send('Page not found');
+    const summaryKey = 'summary:' + key;
+    console.log(`summaryKey: ${summaryKey}`);
+    if (!await client.exists(summaryKey)) {
+      return res.status(404).send('Article summary not found');
     }
+    const summary = JSON.parse(await client.get(summaryKey));
 
-    const screenshot = `data:image/png;base64,${new Buffer(screenshotData).toString('base64')}`;
+    res.render('article', { article, summary });
 
-    res.render('article', { index, article, screenshot });
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');

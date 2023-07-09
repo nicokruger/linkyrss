@@ -97,8 +97,6 @@ function setupworkers(db, client, opts) {
     console.log('======= summary =====');
     console.log(summary.summary);
 
-    throw new Error('stop');
-
     summary.extra_data = extra_data;
 
     await client.set(key, JSON.stringify(summary));
@@ -306,70 +304,6 @@ async function parseAndStoreFeed(feed, n) {
 }
 
 
-function refeedArticles(articles) {
-  const latestArticles = articles.map( ({article,summary}) => {
-    if (summary) {
-      //const newContent = summary.summary + "<br/><br/>" + article.content;
-      //article.content = newContent;
-      //article.summary = `<![CDATA[${summary.summary}<br/><br/>${article.summary}]]>`;
-      //article.summary = "cheese";
-      const summaryHtml = `<hr/><h3>AI Summary</h3><p>${summary.summary}</p>`;
-      article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
-
-      /*
-      category: [
-        {
-          name: 'Cheese',
-          scheme: 'https://example.com/category/cheese',
-          domain: 'https://example.com/',
-          term: 'cheese',
-        }
-      ]
-      */
-      article.category = summary.tags?.map( ({tag,confidence}) => {
-        return {
-          name: tag,
-          scheme: 'https://ttrss.inmytree.co.za/category/' + tag,
-          domain: 'https://ttrss.inmytree.co.za/',
-          term: tag,
-        }
-      });
-      return article;
-    } else {
-      return null;
-    }
-  }).filter( article => article !== null);
-  return latestArticles;
-}
-
-// Function to create a new Atom feed from the given articles.
-function createNewFeed(meta, feedUrl, articles) {
-  const feed = new Feed({
-    title: '[Refeed] ' + meta.title,
-    description: meta.description ?? "Refeed for " + meta.title,
-    id: feedUrl,
-    link: feedUrl,
-    updated: new Date(),
-    generator: 'rss-atom-feed-processor',
-  });
-
-  articles.forEach((article) => {
-    feed.addItem({
-      title: article.title,
-      id: article.guid + 'refeedy',
-      link: article.link,
-      description: article.description,
-      content: article.content,
-      //author: article['atom:author'] ?? article.author,
-      date: new Date(article.pubDate),
-      category: article.category,
-    });
-  });
-
-  //feed.addCategory('Technology');
-
-  return feed;
-}
 
 async function start() {
 
@@ -431,5 +365,3 @@ if (false && require.main === module) {
     //console.log('media', page.media);
   });
 }
-module.exports.refeedArticles = refeedArticles;
-module.exports.createNewFeed = createNewFeed;
