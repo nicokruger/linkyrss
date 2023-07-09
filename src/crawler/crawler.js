@@ -83,7 +83,7 @@ class Crawler {
 
       let bodyHTMLSize = await page.evaluate(() => document.body?.innerHTML.length);
 
-      logger.debug('last: ', lastHTMLSize, ' <> curr: ', currentHTMLSize, " body html size: ", bodyHTMLSize);
+      logger.debug(`[${this.url}] last: ${lastHTMLSize} <> curr: ${currentHTMLSize} body html size: ${bodyHTMLSize}`);
 
       if(lastHTMLSize != 0 && currentHTMLSize == lastHTMLSize) 
         countStableSizeIterations++;
@@ -91,7 +91,7 @@ class Crawler {
         countStableSizeIterations = 0; //reset the counter
 
       if(countStableSizeIterations >= minStableSizeIterations) {
-        logger.debug("Page rendered fully..");
+        logger.debug(`[${this.url}] Page rendered fully..`);
         break;
       }
 
