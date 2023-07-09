@@ -35,15 +35,20 @@ function formatTagPost({summary,article}) {
 }
 
 
-const template = `You are an expert news reporter. Within the block below is the content of a page I am interested in. The url is {my_url}.
+const template = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
 
+\`\`\`html
+{article_content}
 \`\`\`
+
+\`\`\`md
 {content}
 \`\`\`
 
-Please summarise the contents of the provided page. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
+Please summarise the contents of the provided content. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
 
-Split your output into four sections: Article, Related, Comments and References. Provide simple Markdown formatting.
+Split your output into four sections: "Article", "Comments", "Related" and "References". Provide simple Markdown formatting. Try to include links in the "References" section and Related topics in the "Related" section.
+
 
 `
 
@@ -133,9 +138,9 @@ async function get_llm_raw(
   }
   prompt = shorten_prompt(prompt, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
-  //console.log('==============');
-  //console.log(prompt);
-  //console.log('==============');
+  console.log('==============');
+  console.log(prompt);
+  console.log('==============');
 
   let sleep = 2;
   let num_tries = 7;
@@ -277,7 +282,7 @@ async function get_llm_raw(
 }
 
 
-async function get_llm_tags(url, content) {
+async function get_llm_tags(content) {
   const template = `You are a bot that suggests appropriate wikipedia style news and tags for a piece of content:
 
 {content}`;
@@ -299,7 +304,7 @@ async function get_llm_tags(url, content) {
     {"name":"tags_creator"}
   );
 
-  return tags;
+  return tags.filter( (t) => t.confidence >= 0.7);
 
 }
 
@@ -349,24 +354,22 @@ identify:
 }
 
 
-async function summarise_url(url, content) {
-  logger.debug(`[summarise_url] ${url}`);
+async function summarise_article(article_content, content) {
+  logger.debug(`[summarise_article] ${content.length} chars`);
 
   const data = {};
   const inputs = {
-    url,
-    my_url: url,
+    article_content,
     content,
   }
   //get_llm_raw({}, "", content, []).then(console.log);
   data.summary = await get_llm_raw({}, "", template, [], inputs);
-  console.log('have summary', data.summary);
 
-  const tags = await get_llm_tags(url, content);
+  const tags = await get_llm_tags(content);
   data.tags = tags;
 
   const tagsStr = tags.map(t => `${t.tag}=${t.confidence}` ).join(', ');
-  logger.debug(`[summarise_url] ${url} summary: ${data.summary} tags: ${tagsStr}`);
+  logger.debug(`[summarise_article] summary: ${data.summary} tags: ${tagsStr}`);
 
   return data;
 }
@@ -574,7 +577,7 @@ Provide simple markdown: `;
 
 }
 
-module.exports.summarise_url = summarise_url;
+module.exports.summarise_article = summarise_article;
 module.exports.aiWriter = aiWriter;
 module.exports.startSummariseFeeds = startSummariseFeeds;
 module.exports.prepareAiArticle = prepareAiArticle;

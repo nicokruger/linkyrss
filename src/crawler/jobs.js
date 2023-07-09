@@ -76,7 +76,7 @@ function setupworkers(db, client, opts) {
     const {urls,extra_data} = Object.values(data)[0];
 
     let _urls = [];
-    let content;
+    let content = '';
     for (const url of urls) {
       if (_urls.includes(url.link)) continue;
 
@@ -86,12 +86,14 @@ function setupworkers(db, client, opts) {
       _urls.push(url.link);
     }
 
+    console.log('======= article content =====');
+    console.log(article.description);
     console.log('======= content =====');
     console.log(content);
 
 
-    const summary = await summarise.summarise_url(
-      article.link,
+    const summary = await summarise.summarise_article(
+      article.description,
       content
     );
     console.log('======= summary =====');
