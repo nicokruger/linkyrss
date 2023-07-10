@@ -151,9 +151,9 @@ function setupworkers(db, client, opts) {
     await feedwriter.writeFeedMeta({
       summary:true,
       meta:{
-        title:'Test',
+        title:'[AI] ' + feed,
         update:new Date().toISOString(),
-        description:'Test',
+        description:'AI Summarised feed for ' + feed,
       }
     });
 
