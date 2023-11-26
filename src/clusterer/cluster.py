@@ -34,7 +34,7 @@ from sklearn.mixture import GaussianMixture
 
 print("shape of matrix:", matrix.shape)
 print("df.shape:", df.shape)
-n_clusters = max(df.shape[0] // 6, 3)
+n_clusters = max(df.shape[0] // 6, 4)
 print("n_clusters:", n_clusters)
 
 #kmeans = KMeans(n_clusters=n_clusters, init="random", n_init=1000)

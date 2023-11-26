@@ -1,3 +1,5 @@
+const createLogger = require('./logger');
+const logger = createLogger(module);
 const express = require('express');
 const app = express();
 const path = require('path');
@@ -59,6 +61,8 @@ app.get('/', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 async function start() {
+  logger.info("App start");
+
   await client.connect();
   const queues = await jobs.getQueues(client);
   const serverAdapter = new ExpressAdapter();

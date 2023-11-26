@@ -11,11 +11,17 @@ redis_host = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 client = redis.from_url(redis_host)
 
 articles_file = sys.argv[1]
+if not os.path.exists(articles_file):
+    print(f"Articles file {articles_file} does not exist")
+    sys.exit(1)
 if articles_file is None:
     print("Usage: python embeddings.py <articles_file> <out_file>")
     sys.exit(1)
 article_ids = open(articles_file).readlines()
 article_ids = [x.strip() for x in article_ids]
+if len(article_ids) == 0:
+    print(f"WARN: No articles found in file {articles_file}")
+    sys.exit(0)
 
 out_file = sys.argv[2]
 if out_file is None:

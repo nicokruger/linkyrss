@@ -414,6 +414,10 @@ async function startSummariseFeeds(client, aifeed) {
   }
   logger.info(`ai writer: feed ${aifeed.name} has ${articles.length} articles for the last ${aifeed.postsHistoryMinutes} minutes`);
 
+  if (articles.length === 0) {
+    logger.info(`ai writer: feed ${aifeed.name} has no articles for the last ${aifeed.postsHistoryMinutes} minutes`);
+    return;
+  }
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
   const outFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.csv';

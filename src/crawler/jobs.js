@@ -21,6 +21,7 @@ const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bu
 
 let __queues = null;
 
+logger.info("START");
 function setupworkers(db, client, opts) {
   // Setup the workers
   new Worker('feed', async (job) => {
@@ -308,6 +309,7 @@ async function parseAndStoreFeed(feed, n) {
 
 
 async function start() {
+  logger.info("Queues start.");
 
   await client.connect();
   const queues = await module.exports.getQueues(client, true);
@@ -328,6 +330,7 @@ async function start() {
     (async () => {
       while (true) {
 
+        logger.info('Look for reeds.');
         for (const feed of config.feeds) {
           logger.info(`[REFEED] ${feed.name}`);
           parseAndStoreFeed(feed, 1000);
