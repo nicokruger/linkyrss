@@ -56,6 +56,7 @@ function setupworkers(db, client, opts) {
       logger.info(`Crawling [${url.heading}]: ${url.link}`);
       const redisCrawler = new RedisCrawler(client, db);
       await redisCrawler.crawl(url.link);
+      logger.info(`Crawling Done [${url.heading}]: ${url.link}`);
     }
 
     return {urls,extra_data};
@@ -63,7 +64,7 @@ function setupworkers(db, client, opts) {
     //await summarizerQueue.add('summarize', { url, article });
   }, {
     ...opts,
-    concurrency: 6,
+    concurrency: 1,
   });
 
   new Worker('summarizer', async (job) => {
@@ -108,7 +109,7 @@ function setupworkers(db, client, opts) {
 
   }, {
     ...opts,
-    concurrency: 10,
+    concurrency: 1,
     attempts: 5,
     backoff: {
       type: 'exponential', // or 

@@ -41,6 +41,7 @@ async function pandocToMd(id, htmlFile, mdFile) {
   });
   //console.log(`writing to file: ${mdFile}`);
   fs.writeFileSync(mdFile, pandocStdout);
+  console.log(`DONE running pandoc command: ${pandocCommand}`);
 }
 
 async function pandocToHtml(mdFile, htmlFile) {
@@ -80,6 +81,7 @@ async function pandocToHtml(mdFile, htmlFile) {
   });
   //console.log(`writing to file: ${mdFile}`);
   fs.writeFileSync(htmlFile, pandocStdout);
+  logger.debug(`[DONE] running pandoc command: ${pandocCommand}`);
 }
 
 

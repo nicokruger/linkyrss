@@ -7,8 +7,39 @@ import json
 import os
 import sys
 
+
+def cosine_similarity(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+def get_embedding(text, model="text-embedding-ada-002"): # model = "deployment_name"
+    return client.embeddings.create(input = [text], model=model).data[0].embedding
+
+def search_docs(df, user_query, top_n=4, to_print=True):
+    embedding = get_embedding(
+        user_query,
+        model="text-embedding-ada-002" # model should be set to the deployment name you chose when you deployed the text-embedding-ada-002 (Version 2) model
+    )
+    df["similarities"] = df.ada_v2.apply(lambda x: cosine_similarity(x, embedding))
+
+    res = (
+        df.sort_values("similarities", ascending=False)
+        .head(top_n)
+    )
+    if to_print:
+        display(res)
+    return res
+
+
+
+
+
+
+
 redis_host = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 client = redis.from_url(redis_host)
+
+
+
 
 articles_file = sys.argv[1]
 if not os.path.exists(articles_file):
@@ -56,7 +87,6 @@ for key in article_keys:
 print(f"Found {len(titles)} articles")
 print(f"Found {len(summaries)} summaries")
 print(f"Found {len(article_keys)} article keys")
-from openai.embeddings_utils import get_embedding
 
 # embedding model parameters
 embedding_model = "text-embedding-ada-002"
@@ -84,5 +114,8 @@ print(len(df))
 # Ensure you have your API key set in your environment per the README: https://github.com/openai/openai-python#usage
 
 # This may take a few minutes
-df["embedding"] = df.combined.apply(lambda x: get_embedding(x, engine=embedding_model))
+df["embedding"] = df.combined.apply(lambda x: get_embedding(x, embedding_model))
 df.to_csv(out_file)
+
+
+

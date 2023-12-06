@@ -1,9 +1,6 @@
 const os = require('os');
 const fs = require('fs');
-const { ChatOpenAI } = require('langchain/chat_models/openai');
-const { PromptTemplate }  = require( "langchain/prompts");
-const { LLMChain }  = require( "langchain/chains");
-const { Configuration, OpenAIApi } = require('openai');
+const { OpenAI } = require('openai');
 const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
@@ -121,10 +118,10 @@ async function get_llm_raw(
   model = "gpt-3.5-turbo-16k",
   temperature = undefined
 ) {
-  const configuration = new Configuration({
+  const configuration = {
     apiKey: process.env.OPENAI_API_KEY,
-  });
-  const openai = new OpenAIApi(configuration);
+  };
+  const openai = new OpenAI(configuration);
 
   // replace the template with the inputs
   let prompt = in_template;
@@ -190,7 +187,7 @@ async function get_llm_raw(
           resolve({timeout: true});
         }, slowtime);
       });
-      const chatCompletionPromise = openai.createChatCompletion({
+      const chatCompletionPromise = openai.chat.completions.create({
         model,
         //stream: true,
         //model: "gpt-3.5-turbo-0613",
@@ -205,7 +202,7 @@ async function get_llm_raw(
 
 
       const chatCompletion = resp;
-      const firstChoice = chatCompletion.data.choices[0];
+      const firstChoice = chatCompletion.choices[0];
       const response_message = firstChoice.message;
       const assistant = response_message.content;
       content = assistant ?? 'flezbar';

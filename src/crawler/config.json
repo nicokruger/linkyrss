@@ -1,26 +1,17 @@
 {
-  "python":"~/python.sh",
+  "python":"python",
   "feeds":[
-    {
-        "name":"Test1",
-        "url":"https://sergeykibish.com/blog/index.xml"
-    },
-    {
-      "name":"Test2",
-      "url":"https://adriano.fyi/index.xml"
-    },
     {
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage"
+    },
+    {
+      "name":"AwsNewsBlog",
+      "url":"https://aws.amazon.com/blogs/aws/feed/"
+
     }
 
   ],
   "aifeeds": [
-    {
-      "name": "AITest",
-      "sources": ["Test1","Test2"],
-      "postsHistoryMinutes":60000000,
-      "scheduleTimeMinutes": 60
-    }
   ]
 }
