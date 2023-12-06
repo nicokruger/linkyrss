@@ -4,13 +4,7 @@
     {
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage"
-    },
-    {
-      "name":"AwsNewsBlog",
-      "url":"https://aws.amazon.com/blogs/aws/feed/"
-
     }
-
   ],
   "aifeeds": [
   ]

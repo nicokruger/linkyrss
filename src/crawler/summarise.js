@@ -115,7 +115,7 @@ async function get_llm_raw(
   history = [],
   function_call = "auto",
   out_prompt = null,
-  model = "gpt-3.5-turbo-16k",
+  model = "gpt-3.5-turbo-1106",
   temperature = undefined
 ) {
   const configuration = {
@@ -135,9 +135,13 @@ async function get_llm_raw(
   }
   prompt = shorten_prompt(prompt, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
-  //console.log('==============');
-  //console.log(prompt);
-  //console.log('==============');
+  console.log('==============');
+  console.log(prompt);
+  console.log('==============');
+
+  fs.appendFileSync('prompt.txt', `=== ${new Date().toISOString()} ===\n`);
+  fs.appendFileSync('prompt.txt', prompt);
+  fs.appendFileSync('prompt.txt', '==============\n');
 
   let sleep = 2;
   let num_tries = 7;
