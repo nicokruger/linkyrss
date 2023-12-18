@@ -21,6 +21,20 @@ const { FlowProducer, Queue, Worker, QueueScheduler, QueueEvents } = require('bu
 
 let __queues = null;
 
+logger.info("START");
+
+async function markArticleBusy(client, articleKey) {
+  const busyKey = `busy:${articleKey}`;
+  const alreadyBusy = await client.exists(busyKey);
+  if (alreadyBusy) return false;
+
+  await client.set(busyKey, new Date().toISOString());
+  return true;
+}
+function clearArticleBusy(client, articleKey) {
+  const busyKey = `busy:${articleKey}`;
+  return client.del(busyKey);
+}
 function setupworkers(db, client, opts) {
   // Setup the workers
   new Worker('feed', async (job) => {
@@ -30,8 +44,7 @@ function setupworkers(db, client, opts) {
     const childrenValues = await job.getChildrenValues();
     for (const articleKey of Object.values(childrenValues)) {
       logger.debug('set done', articleKey);
-      const alreadyDoneKey = `done:${articleKey}`;
-      await client.set(alreadyDoneKey, 'true');
+      clearArticleBusy(client, articleKey);
     }
 
   }, opts);
@@ -55,6 +68,7 @@ function setupworkers(db, client, opts) {
       logger.info(`Crawling [${url.heading}]: ${url.link}`);
       const redisCrawler = new RedisCrawler(client, db);
       await redisCrawler.crawl(url.link);
+      logger.info(`Crawling Done [${url.heading}]: ${url.link}`);
     }
 
     return {urls,extra_data};
@@ -62,7 +76,7 @@ function setupworkers(db, client, opts) {
     //await summarizerQueue.add('summarize', { url, article });
   }, {
     ...opts,
-    concurrency: 6,
+    concurrency: 1,
   });
 
   new Worker('summarizer', async (job) => {
@@ -81,7 +95,7 @@ function setupworkers(db, client, opts) {
       if (_urls.includes(url.link)) continue;
 
       const page = await db.getPage(url.link);
-      content += "### " + url.heading + "\n" + page.pandocCrawl.readableArticle.textContent + "\n\n\n";
+      content += "### " + url.heading + "\n" + page.readableArticle.textContent + "\n\n\n";
 
       _urls.push(url.link);
     }
@@ -93,6 +107,7 @@ function setupworkers(db, client, opts) {
 
 
     const summary = await summarise.summarise_article(
+      article.link,
       article.description,
       content
     );
@@ -107,7 +122,7 @@ function setupworkers(db, client, opts) {
 
   }, {
     ...opts,
-    concurrency: 10,
+    concurrency: 1,
     attempts: 5,
     backoff: {
       type: 'exponential', // or 
@@ -151,9 +166,9 @@ function setupworkers(db, client, opts) {
     await feedwriter.writeFeedMeta({
       summary:true,
       meta:{
-        title:'Test',
+        title:'[AI] ' + feed,
         update:new Date().toISOString(),
-        description:'Test',
+        description:'AI Summarised feed for ' + feed,
       }
     });
 
@@ -213,6 +228,11 @@ if (!configFile) {
 }
 
 async function parseAndStoreFeed(feed, n) {
+  function makeArticleKey(article) {
+    const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + '__' + (article.guid ?? article.id)).replace(/:/g,'');
+    const articleKey = `article:${feed.name}:${index}`;
+    return {articleKey,index};
+  }
   const queues = await module.exports.getQueues(client);
 
   const {url,name} = feed;
@@ -224,16 +244,26 @@ async function parseAndStoreFeed(feed, n) {
     const latestArticles = _.shuffle(articles.slice(0, n));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
+
     if (!latestArticles.length) {
       logger.warn('there are no jobs for feed ' + feed.name);
       return;
     }
 
-
+    // first, filter out articles that are busy and/or stuck somewhere
+    const filteredArticles = [];
+    for (const article of latestArticles) {
+      const {articleKey,index} = makeArticleKey(article);
+      if (!(await markArticleBusy(client, articleKey))) {
+        logger.debug('article already busy', articleKey);
+        continue;
+      }
+      filteredArticles.push(article);
+    };
 
     let first = true;
     let i = 0;
-    const chunkedArticles = _.chunk(latestArticles, 20);
+    const chunkedArticles = _.chunk(filteredArticles, 20);
     for (const chunk of chunkedArticles) {
       const children = [];
       for (const article of chunk) {
@@ -242,15 +272,7 @@ async function parseAndStoreFeed(feed, n) {
         //console.log(JSON.stringify(article,null,2));
         //console.log('===========================')
 
-        const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + ':' + (article.guid ?? article.id)).replace(/:/g,'');
-        const articleKey = `article:${feed.name}:${index}`;
-        const alreadyDoneKey = `done:${articleKey}`;
-        const alreadyDone = await client.exists(alreadyDoneKey);
-        if (alreadyDone) {
-          logger.debug('article already exists', articleKey);
-          continue;
-        }
-
+        const {articleKey,index} = makeArticleKey(article);
         article.articleKey = articleKey;
 
         if (first) {
@@ -292,7 +314,12 @@ async function parseAndStoreFeed(feed, n) {
       await queues.flowProducer.add({
         name: feed.name,
         queueName: queues.rssFeedQueue.name,
-        data: { feed: feed.name, time: new Date().toISOString(), chunkNum:i, total: chunk.length },
+        data: {
+          feed: feed.name,
+          time: new Date().toISOString(),
+          chunkNum:i,
+          total: chunk.length
+        },
         children
       });
       i++;
@@ -308,6 +335,7 @@ async function parseAndStoreFeed(feed, n) {
 
 
 async function start() {
+  logger.info("Queues start.");
 
   await client.connect();
   const queues = await module.exports.getQueues(client, true);
@@ -328,6 +356,7 @@ async function start() {
     (async () => {
       while (true) {
 
+        logger.info('Look for reeds.');
         for (const feed of config.feeds) {
           logger.info(`[REFEED] ${feed.name}`);
           parseAndStoreFeed(feed, 1000);

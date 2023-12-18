@@ -1,9 +1,6 @@
 const os = require('os');
 const fs = require('fs');
-const { ChatOpenAI } = require('langchain/chat_models/openai');
-const { PromptTemplate }  = require( "langchain/prompts");
-const { LLMChain }  = require( "langchain/chains");
-const { Configuration, OpenAIApi } = require('openai');
+const { OpenAI } = require('openai');
 const createLogger = require('./logger');
 const logger = createLogger(module);
 const _ =  require('lodash');
@@ -34,8 +31,15 @@ function formatTagPost({summary,article}) {
   return `### ${title} ${tags}\n${link}\n\n`;
 }
 
+const template = `You are a user submitting a post to \"slash.ai\". Summarise the following article in a user-submitted summary style and tone similair to slashdot:
 
-const template = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
+{article_link}
+\`\`\`article
+{content}
+\`\`\`
+`;
+
+const template2 = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
 
 \`\`\`html
 {article_content}
@@ -118,13 +122,13 @@ async function get_llm_raw(
   history = [],
   function_call = "auto",
   out_prompt = null,
-  model = "gpt-3.5-turbo-16k",
+  model = "gpt-3.5-turbo-1106",
   temperature = undefined
 ) {
-  const configuration = new Configuration({
+  const configuration = {
     apiKey: process.env.OPENAI_API_KEY,
-  });
-  const openai = new OpenAIApi(configuration);
+  };
+  const openai = new OpenAI(configuration);
 
   // replace the template with the inputs
   let prompt = in_template;
@@ -138,9 +142,13 @@ async function get_llm_raw(
   }
   prompt = shorten_prompt(prompt, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
-  //console.log('==============');
-  //console.log(prompt);
-  //console.log('==============');
+  console.log('==============');
+  console.log(prompt);
+  console.log('==============');
+
+  fs.appendFileSync('prompt.txt', `=== ${new Date().toISOString()} ===\n`);
+  fs.appendFileSync('prompt.txt', prompt);
+  fs.appendFileSync('prompt.txt', '==============\n');
 
   let sleep = 2;
   let num_tries = 7;
@@ -190,7 +198,8 @@ async function get_llm_raw(
           resolve({timeout: true});
         }, slowtime);
       });
-      const chatCompletionPromise = openai.createChatCompletion({
+	    console.log('WTF', JSON.stringify(messages,0,2));
+      const chatCompletionPromise = openai.chat.completions.create({
         model,
         //stream: true,
         //model: "gpt-3.5-turbo-0613",
@@ -205,7 +214,7 @@ async function get_llm_raw(
 
 
       const chatCompletion = resp;
-      const firstChoice = chatCompletion.data.choices[0];
+      const firstChoice = chatCompletion.choices[0];
       const response_message = firstChoice.message;
       const assistant = response_message.content;
       content = assistant ?? 'flezbar';
@@ -354,18 +363,45 @@ identify:
 }
 
 
-async function summarise_article(article_content, content) {
+async function summarise_article(article_link, article_content, content) {
   logger.debug(`[summarise_article] ${content.length} chars`);
 
   const data = {};
   const inputs = {
-    article_content,
+    article_link,
+    //article_content,
     content,
   }
   //get_llm_raw({}, "", content, []).then(console.log);
-  data.summary = await get_llm_raw({}, "", template, [], inputs);
+  //data.summary = await get_llm_raw({}, "", template, [], inputs);
+//async function get_llm_raw(
+//  functiondata,
+//  system,
+//  in_template,
+//  examples,
+//  inputs,
+//  history = [],
+//  function_call = "auto",
+//  out_prompt = null,
+//  model = "gpt-3.5-turbo-1106",
+//  temperature = undefined
+//) {
 
-  const tags = await get_llm_tags(content);
+  data.summary = await get_llm_raw(
+	  {},
+	  "",
+	  template,
+	  [],
+	  inputs,
+	  [],
+	  "auto",
+	  null,
+	  model="ft:gpt-3.5-turbo-1106:digitata::8XD1r2Hy",
+	  0.05
+  );
+
+  //const tags = await get_llm_tags(content);
+	const tags = [];
   data.tags = tags;
 
   const tagsStr = tags.map(t => `${t.tag}=${t.confidence}` ).join(', ');
@@ -414,6 +450,10 @@ async function startSummariseFeeds(client, aifeed) {
   }
   logger.info(`ai writer: feed ${aifeed.name} has ${articles.length} articles for the last ${aifeed.postsHistoryMinutes} minutes`);
 
+  if (articles.length === 0) {
+    logger.info(`ai writer: feed ${aifeed.name} has no articles for the last ${aifeed.postsHistoryMinutes} minutes`);
+    return;
+  }
   const inFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.keys';
   fs.writeFileSync(inFileName, articles.join("\n"));
   const outFileName = os.tmpdir() + '/clustered_posts_' + (new Date()).getTime() + '.csv';
