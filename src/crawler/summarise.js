@@ -31,8 +31,15 @@ function formatTagPost({summary,article}) {
   return `### ${title} ${tags}\n${link}\n\n`;
 }
 
+const template = `You are a user submitting a post to \"slash.ai\". Summarise the following article in a user-submitted summary style and tone similair to slashdot:
 
-const template = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
+{article_link}
+\`\`\`article
+{content}
+\`\`\`
+`;
+
+const template2 = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
 
 \`\`\`html
 {article_content}
@@ -191,6 +198,7 @@ async function get_llm_raw(
           resolve({timeout: true});
         }, slowtime);
       });
+	    console.log('WTF', JSON.stringify(messages,0,2));
       const chatCompletionPromise = openai.chat.completions.create({
         model,
         //stream: true,
@@ -355,18 +363,45 @@ identify:
 }
 
 
-async function summarise_article(article_content, content) {
+async function summarise_article(article_link, article_content, content) {
   logger.debug(`[summarise_article] ${content.length} chars`);
 
   const data = {};
   const inputs = {
-    article_content,
+    article_link,
+    //article_content,
     content,
   }
   //get_llm_raw({}, "", content, []).then(console.log);
-  data.summary = await get_llm_raw({}, "", template, [], inputs);
+  //data.summary = await get_llm_raw({}, "", template, [], inputs);
+//async function get_llm_raw(
+//  functiondata,
+//  system,
+//  in_template,
+//  examples,
+//  inputs,
+//  history = [],
+//  function_call = "auto",
+//  out_prompt = null,
+//  model = "gpt-3.5-turbo-1106",
+//  temperature = undefined
+//) {
 
-  const tags = await get_llm_tags(content);
+  data.summary = await get_llm_raw(
+	  {},
+	  "",
+	  template,
+	  [],
+	  inputs,
+	  [],
+	  "auto",
+	  null,
+	  model="ft:gpt-3.5-turbo-1106:digitata::8XD1r2Hy",
+	  0.05
+  );
+
+  //const tags = await get_llm_tags(content);
+	const tags = [];
   data.tags = tags;
 
   const tagsStr = tags.map(t => `${t.tag}=${t.confidence}` ).join(', ');

@@ -116,7 +116,8 @@ function refeedArticles(articles) {
     if (summary) {
 
 
-      const html = marked.parse(cleanMarkdown(summary.summary));
+      //const html = marked.parse(cleanMarkdown(summary.summary));
+      const html = cleanHtml(summary.summary);
       const summaryHtml = `<hr/><h3>AI Summary</h3>${html}`;
       article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
 
@@ -178,6 +179,9 @@ module.exports.refeedArticles = refeedArticles;
 module.exports.createNewFeed = createNewFeed;
 
 
+function cleanHtml(html) {
+	return html.replace('|Slashdot|','').replace('|/Slashdot|','');
+}
 function cleanMarkdown(md) {
   md = md.trim()
   /// remove ```markdown, ```md, from the start of the contents

@@ -4,7 +4,24 @@
     {
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage"
+    },
+    {
+      "name":"LobstersNewest",
+      "url":"https://lobste.rs/newest.rss"
+    },
+    {
+      "name":"Tildes",
+      "url":"https://tildes.net/topics.atom?order=activity"
+    },
+    {
+      "name":"StaySAASY",
+      "url":"https://staysaasy.com/feed.xml"
+    },
+    {
+      "name":"SVPG",
+      "url":"https://www.svpg.com/feed"
     }
+
   ],
   "aifeeds": [
   ]
