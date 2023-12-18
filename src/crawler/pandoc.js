@@ -6,7 +6,7 @@ const logger = createLogger(module);
 const maxBuffer = 10 * 1024 * 1024;
 async function pandocToMd(id, htmlFile, mdFile) {
   //const pandocCommand = `pandoc --columns 120 ${htmlFile} -t gfm-raw_html -s --wrap none --strip-comments --lua-filter=remove-attr.lua`;
-  const pandocCommand = `pandoc --columns 120 ${htmlFile} -t markdown-simple_tables-pipe_tables+grid_tables+fenced_divs -s --strip-comments --lua-filter=remove-attr2.lua`;
+  const pandocCommand = `pandoc --columns 120 ${htmlFile} -t markdown-simple_tables-pipe_tables+grid_tables+fenced_divs-yaml_metadata_block -s --strip-comments --lua-filter=remove-attr2.lua`;
   console.log(`running pandoc command: ${pandocCommand}`);
   const pandoc = childProcess.exec(pandocCommand, {
     maxBuffer
