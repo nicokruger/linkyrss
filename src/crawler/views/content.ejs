@@ -9,6 +9,13 @@
   <h1><%= article.readableArticle.title %></h1>
   <a href="/content/<%= parseInt(index) - 1 %>">Previous</a>
   <a href="/content/<%= parseInt(index) + 1 %>">Next</a>
+  <h1> Readable Article </h1>
+  <%- article.readableArticle.content %>
+
+  <h1> Pandoc Readable Article </h1>
   <%- article.pandocCrawl.readableArticle.content %>
+
+  <h1> raw </h1>
+  <pre><code><%= JSON.stringify(article,0,2) %></code></pre>
 </body>
 </html>

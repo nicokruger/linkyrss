@@ -240,7 +240,7 @@ async function parseAndStoreFeed(feed, n) {
       addmeta: true,
     });
 
-    const latestArticles = _.shuffle(articles.slice(0, n));
+    const latestArticles = _.shuffle(articles.slice(0, 1));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 

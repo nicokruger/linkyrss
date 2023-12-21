@@ -2,8 +2,8 @@
   "python":"python",
   "feeds":[
     {
-      "name":"HackerNewsFrontPage",
-      "url":"https://hnrss.org/frontpage"
+      "name":"TelcoTest",
+      "url":"https://feeds.feedburner.com/rcrwireless/sLmV"
     }
   ],
   "aifeeds": [
