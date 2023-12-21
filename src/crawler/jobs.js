@@ -95,7 +95,7 @@ function setupworkers(db, client, opts) {
       if (_urls.includes(url.link)) continue;
 
       const page = await db.getPage(url.link);
-      content += "### " + url.heading + "\n" + page.pandocCrawl.readableArticle.textContent + "\n\n\n";
+      content += "### " + url.heading + "\n" + page.readableArticle.textContent + "\n\n\n";
 
       _urls.push(url.link);
     }
@@ -107,6 +107,7 @@ function setupworkers(db, client, opts) {
 
 
     const summary = await summarise.summarise_article(
+      article.link,
       article.description,
       content
     );
