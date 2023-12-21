@@ -90,29 +90,41 @@ function setupworkers(db, client, opts) {
     const {urls,extra_data} = Object.values(data)[0];
 
     let _urls = [];
+    const summary = {summary:'',tags:[]};
     let content = '';
+    //for (const url of urls.slice(0,1)) {
     for (const url of urls) {
+      console.log('============= url', url.heading, url.link);
       if (_urls.includes(url.link)) continue;
 
       const page = await db.getPage(url.link);
-      content += "### " + url.heading + "\n" + page.readableArticle.textContent + "\n\n\n";
+      //content += "### " + url.heading + "\n" + page.readableArticle.textContent + "\n\n\n";
+      //content += page.readableArticle.textContent.trim();
+      //let content = `# [${url.heading}](${url.link})\n\n`;
+      //content += `# [${url.heading}](${url.link})\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
+      content += `The following content is from ${url.link}:\n# ${url.heading}\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
 
       _urls.push(url.link);
+
     }
+
+    const urlSummary = await summarise.summarise_article(
+      article.link,
+      article.description, // not used
+      content
+    );
+    summary.summary += '<h3>' + url.heading + "</h3>\n" + urlSummary.summary;
+
+    console.log('======= summary =====');
+    console.log(summary.summary);
+
+    throw new Error('stop');
 
     //console.log('======= article content =====');
     //console.log(article.description);
     //console.log('======= content =====');
     //console.log(content);
 
-
-    const summary = await summarise.summarise_article(
-      article.link,
-      article.description,
-      content
-    );
-    //console.log('======= summary =====');
-    //console.log(summary.summary);
 
     summary.extra_data = extra_data;
 
@@ -241,7 +253,7 @@ async function parseAndStoreFeed(feed, n) {
       addmeta: true,
     });
 
-    const latestArticles = _.shuffle(articles.slice(0, n));
+    const latestArticles = _.shuffle(articles.slice(0, 1));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 
