@@ -31,31 +31,6 @@ function formatTagPost({summary,article}) {
   return `### ${title} ${tags}\n${link}\n\n`;
 }
 
-const template = `You are a user submitting a post to \"slash.ai\". Summarise the following article in a user-submitted summary style and tone similair to slashdot:
-
-{article_link}
-\`\`\`article
-{content}
-\`\`\`
-`;
-
-const template2 = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
-
-\`\`\`html
-{article_content}
-\`\`\`
-
-\`\`\`md
-{content}
-\`\`\`
-
-Please summarise the contents of the provided content. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
-
-Split your output into four sections: "Article", "Comments", "Related" and "References". Provide simple Markdown formatting. Try to include links in the "References" section and Related topics in the "Related" section.
-
-
-`
-
 async function get_llm_summary(chain, inputs) {
   let sleep = 4;
   let num_tries = 2;
@@ -387,6 +362,32 @@ async function summarise_article(article_link, article_content, content) {
 //  temperature = undefined
 //) {
 
+  const template = `Create a concise, engaging summary about [Topic Name], suitable for a Slashdot-style post. Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
+
+{article_link}
+\`\`\`article
+{content}
+\`\`\`
+`;
+
+  const template2 = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
+
+  \`\`\`html
+  {article_content}
+  \`\`\`
+
+  \`\`\`md
+  {content}
+  \`\`\`
+
+  Please summarise the contents of the provided content. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
+
+  Split your output into four sections: "Article", "Comments", "Related" and "References". Provide simple Markdown formatting. Try to include links in the "References" section and Related topics in the "Related" section.
+
+
+  `
+
+
   data.summary = await get_llm_raw(
 	  {},
 	  "",
@@ -396,7 +397,7 @@ async function summarise_article(article_link, article_content, content) {
 	  [],
 	  "auto",
 	  null,
-	  model="ft:gpt-3.5-turbo-1106:digitata::8XD1r2Hy",
+	  model="ft:gpt-3.5-turbo-1106:digitata::8Y5ggQvS",
 	  0.05
   );
 
