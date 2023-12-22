@@ -42,10 +42,13 @@ function setupworkers(db, client, opts) {
     logger.info(`Done [${feed}] chunk ${chunkNum}, ${total} articles`);
 
     const childrenValues = await job.getChildrenValues();
-    for (const articleKey of Object.values(childrenValues)) {
-      logger.debug('set done', articleKey);
-      clearArticleBusy(client, articleKey);
-    }
+
+
+    // never mark it done ?
+    //for (const articleKey of Object.values(childrenValues)) {
+      //logger.debug('set done', articleKey);
+      //clearArticleBusy(client, articleKey);
+    //}
 
   }, opts);
 
@@ -89,39 +92,7 @@ function setupworkers(db, client, opts) {
     const data = await job.getChildrenValues();
     const {urls,extra_data} = Object.values(data)[0];
 
-    let _urls = [];
-    let content = '';
-    //for (const url of urls.slice(0,1)) {
-    for (const url of urls) {
-      console.log('============= url', url.heading, url.link);
-      if (_urls.includes(url.link)) continue;
-
-      const page = await db.getPage(url.link);
-      //content += "### " + url.heading + "\n" + page.readableArticle.textContent + "\n\n\n";
-      //content += page.readableArticle.textContent.trim();
-      //let content = `# [${url.heading}](${url.link})\n\n`;
-      //content += `# [${url.heading}](${url.link})\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
-      content += `The following content is from ${url.link}:\n# ${url.heading}\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
-
-      _urls.push(url.link);
-
-    }
-
-    const summary = await summarise.summarise_article(
-      article.link,
-      article.description, // not used
-      content
-    );
-    console.log('======= summary =====');
-    console.log(summary.summary);
-
-
-    //console.log('======= article content =====');
-    //console.log(article.description);
-    //console.log('======= content =====');
-    //console.log(content);
-
-
+    const summary = await summarise.summarise(db, article, urls);
     summary.extra_data = extra_data;
 
     console.log('STORE', key);
@@ -133,11 +104,13 @@ function setupworkers(db, client, opts) {
   }, {
     ...opts,
     concurrency: 1,
-    attempts: 5,
+    attempts: 10,
+    /*
     backoff: {
       type: 'exponential', // or 
       delay: 1200,
     }
+    */
   });
 
   new Worker('embedding', async (job) => {
@@ -246,10 +219,25 @@ async function parseAndStoreFeed(feed, n) {
   const queues = await module.exports.getQueues(client);
 
   const {url,name} = feed;
+  const articleAgeMinutes = feed.articleAgeMinutes ?? 0;
   try {
-    const articles = await feedparser.parse(url, {
+    let articles = await feedparser.parse(url, {
       addmeta: true,
     });
+    articles = articles.filter(article => {
+      const articleDate = article.pubDate ?? article.pubdate ?? article.date;
+      if (!articleDate) {
+        logger.debug(`[REFEED] ${name} including article with no date`);
+        return true;
+      }
+      const age = (new Date() - articleDate) / 1000 / 60;
+      if (age < articleAgeMinutes) {
+        logger.debug(`[REFEED] ${name} skipping article ${age} minutes old`);
+        return false;
+      }
+      return true;
+    });
+
 
     const latestArticles = _.shuffle(articles.slice(0, 3));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
@@ -366,7 +354,7 @@ async function start() {
     (async () => {
       while (true) {
 
-        logger.info('Look for reeds.');
+        logger.info('Look for feeds.');
         for (const feed of config.feeds) {
           logger.info(`[REFEED] ${feed.name}`);
           parseAndStoreFeed(feed, 1000);

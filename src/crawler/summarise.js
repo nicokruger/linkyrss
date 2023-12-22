@@ -173,7 +173,6 @@ async function get_llm_raw(
           resolve({timeout: true});
         }, slowtime);
       });
-	    console.log('WTF', JSON.stringify(messages,0,2));
       const chatCompletionPromise = openai.chat.completions.create({
         model,
         //stream: true,
@@ -338,30 +337,98 @@ identify:
 }
 
 
-async function summarise_article(article_link, article_content, content) {
+const summarisers = {
+// key, priority - lower is first
+'Article':[summarise_article,0],
+'default':[summarise_article,0],
+'Comment':[summarise_comments,1],
+'Discussion':[summarise_comments,1]
+}
+function findSummariser(linkText, linkUrl, content) {
+  for (const summariser of Object.keys(summarisers)) {
+    if (linkText.includes(summariser)) {
+      logger.debug(`[find_summariser] ${linkText} ${linkUrl} use summariser ${summariser}`);
+      return summarisers[summariser];
+    }
+  }
+  logger.debug(`[find_summariser] ${linkText} ${linkUrl} use summariser default`);
+  return summarisers['default'];
+}
+
+async function summarise(db, article, urls) {
+
+  let jobs = [];
+  const _urls = [];
+  for (const url of urls) {
+    if (_urls.includes(url.link)) continue;
+    const summariser = findSummariser(url.heading, url.link, article.content);
+    jobs.push({
+      summariser,
+      url,
+    });
+    _urls.push(url.link);
+  }
+
+  jobs = jobs.sort( (a,b) => a.summariser[1] - b.summariser[1] );
+  logger.debug(`[summarise] ${article.title} ${article.link} ${JSON.stringify(jobs.map)}`);
+
+  const pageSummaries = [];
+  const pageSummaryMap = {};
+  for (const {summariser,url} of jobs) {
+    logger.debug('============= url', url.heading, url.link);
+    const page = await db.getPage(url.link);
+    const content = page.pandocCrawl.readableArticle.content.trim();
+    const pageSummary = await summariser[0](
+      url.heading,
+      url.link,
+      content,
+      pageSummaryMap
+    );
+    pageSummaries.push({url,pageSummary});
+    pageSummaryMap[pageSummary.title] = pageSummary.summary;
+  }
+
+
+
+  for (const url of urls) {
+    console.log('============= url', url.heading, url.link);
+    if (_urls.includes(url.link)) continue;
+
+    const page = await db.getPage(url.link);
+    //content += `The following content is from ${url.link}:\n# ${url.heading}\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
+
+    _urls.push(url.link);
+
+  }
+
+  let i = 0;
+  let summaryContents = '';
+  for (const {url,pageSummary} of pageSummaries) {
+    summaryContents += `<div class="page">
+<h1>${pageSummary.title} [${i}]</h1>
+\n${pageSummary.summary}
+</div>
+`;
+    i++;
+  }
+  console.log('======= summary contents =====');
+  console.log(summaryContents);
+
+  const summary = {
+    summary: summaryContents,
+    tags: [],
+  }
+  return summary;
+}
+
+async function summarise_article(article_heading, article_link, content, summaryMap) {
   logger.debug(`[summarise_article] ${content.length} chars`);
 
   const data = {};
   const inputs = {
     article_link,
-    //article_content,
     content,
   }
-  //get_llm_raw({}, "", content, []).then(console.log);
-  //data.summary = await get_llm_raw({}, "", template, [], inputs);
-//async function get_llm_raw(
-//  functiondata,
-//  system,
-//  in_template,
-//  examples,
-//  inputs,
-//  history = [],
-//  function_call = "auto",
-//  out_prompt = null,
-//  model = "gpt-3.5-turbo-1106",
-//  temperature = undefined
-//) {
-
   const template = `Create a concise, engaging summary about [Topic Name], suitable for a Slashdot-style post. Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
 
 {article_link}
@@ -369,24 +436,6 @@ async function summarise_article(article_link, article_content, content) {
 {content}
 \`\`\`
 `;
-
-  const template2 = `You are an expert post summariser. Within the block below is the content of a page I am interested in.
-
-  \`\`\`html
-  {article_content}
-  \`\`\`
-
-  \`\`\`md
-  {content}
-  \`\`\`
-
-  Please summarise the contents of the provided content. The page may be an article or a user submitted post. Provide a summary of discussions and comments if applicable. Try to focus mainly on the content, ignore things like sidebars, footers and so forth. Do not start your summary with "The provided HTML page" or "The page" etc. or something similair, just write out the summary from the perspective of an expert news reporter.
-
-  Split your output into four sections: "Article", "Comments", "Related" and "References". Provide simple Markdown formatting. Try to include links in the "References" section and Related topics in the "Related" section.
-
-
-  `
-
 
   data.summary = await get_llm_raw(
 	  {},
@@ -401,6 +450,8 @@ async function summarise_article(article_link, article_content, content) {
 	  0.05
   );
 
+  data.title = 'Article';
+
   //const tags = await get_llm_tags(content);
 	const tags = [];
   data.tags = tags;
@@ -410,6 +461,235 @@ async function summarise_article(article_link, article_content, content) {
 
   return data;
 }
+async function summarise_comments(article_heading, article_link, content, summaryMap) {
+  logger.debug(`[summarise_comments] ${content.length} chars`);
+
+  const data = {};
+  const inputs = {
+    article_heading,
+    article_link,
+    content,
+  }
+  for (const k of Object.keys(summaryMap)) {
+    inputs['summary_'+k] = summaryMap[k];
+  }
+  const system = `The user is going to ask you to generate discussion summaries given an article summary. Create a concise, engaging summary about COMMENTS URL. Focus on capturing the overall sentiment, key observations, and any humorous comments. Highlight diverse opinions and provide a concise overview of how the community has engaged with the topic.  Use the same output format as the initial summary.
+
+Example:
+User: Users are discussing the following the following generated summary of an article:
+\`\`\`
+<div class="body" id="fhbody-172347761">
+	
+
+	
+		
+		<div id="text-172347761" class="p">
+			
+		 	
+				An anonymous reader shares a report: <i>Prepend any arxiv.org link with 'talk2' to load the paper into a responsive RAG chat application (e.g. <a href="https://www.talk2arxiv.org/pdf/1706.03762.pdf">www.arxiv.org/pdf/1706.03762.pdf</a> -&gt; <a href="https://www.talk2arxiv.org/pdf/1706.03762.pdf">www.talk2arxiv.org/pdf/1706.03762.pdf</a>). Talk2Arxiv is an open-source RAG (Retrieval-Augmented Generation) system specially built for academic paper PDFs. Powered by talk2arxiv-server. <a href="SEARCH:Talk2Arxiv GitHub repository">The project is available on GitHub</a>.</i><br>
+		 	
+		</div>
+
+		
+
+		
+
+		
+	</div>
+\`\`\`
+
+Format the comments section provided below of the post. Focus on capturing the overall sentiment, key observations, and any humorous comments. Highlight diverse opinions and provide a concise overview of how the community has engaged with the topic. What insights or unique perspectives do the comments offer about the article?
+
+
+<h1>Comments URL</h1>
+\`\`\`article
+pushfoo 0 minutes ago | next []
+
+You might be able to drop the PDF backend since they're close to getting HTML running well: <https://news. ycombinator.com/item?id=38713215>
+
+Using that might be easier than a multi-modal approach. Bonus points for:
+
+* Multiple papers at once
+
+* Comparing PDF and HTML output with the LLM as input for it correcting similar converter code
+
+reply
+
+		
+Aachen 2 minutes ago | prev | next []
+
+I thought this would be for contacting authors or chatting about the paper with other readers, but apparently RAG here is a new important TLA to take note of, meaning chat bot. You need to enter an API key from "Open"AI to use the service and it's about it answering your questions about the paper
+
+reply
+
+		
+gorkish 11 minutes ago | prev | next []
+
+Very nice; appears to work well. Just an FYI that I did get a couple errors where the max context length was exceeded, one using the demo summarization task as the first query. I was using my own API key when the error occured.
+
+reply
+
+		
+evanhu_ 6 minutes ago | parent | next []
+
+Thank you! Thanks for pointing that out, since the underlying RAG is rather naive (simple embedding cosine similarity lookup, as opposed to knowledge graph / advanced techniques), I opted to embed both "small" (512 character and below) chunks as well as entire section chunks (embedding the entire introduction) in order to support questions such as "Please summarize the introduction". Since I also use 5 chunks for each context, I suspect this can add up to a massive amount on papers with huge sections.
+
+reply
+
+		
+katella 15 minutes ago | prev | next []
+
+Idk where this changing the url thing started but I really like it.
+
+reply
+
+		
+Reac tiveJelly 9 minutes ago | parent | next []
+
+It bugs me cause it's kinda true but kinda misleading, I don't know if casual web users realize it's a whole different domain. Sometimes it's not important, sometimes it is.
+
+reply
+
+		
+Aachen 8 minutes ago | parent | prev | next []
+
+The oldest instance of it that I know is putting something like download before or after the youtube domain. This must have been 2008±2. I very much doubt that's the first instance ever but I wasn't around online in the 90s
+
+reply
+
+		
+zzleeper 16 minutes ago | prev | next []
+
+Looks great! It would be very interesting to understand a bit they why/how of some of the steps, such as the reranking and how you arrived at your chunking algo.
+
+reply
+
+		
+evanhu_ 3 minutes ago | parent | next []
+
+Thank you :). I updated the README to have some more explanation of the steps.
+
+The chunking algorithm chunks by logical section (intro, abstract, authors, etc.) and also utilizes recursive subdivision chunking (chunk at 512 characters, then 256, then 128...). It is quite naive still but it works OK for now. An improvement would perhaps involve more advanced techniques like knowledge graph precomputation.
+
+Reranking works by instead of embedding each text chunk as a vector and performing cosine similarity nearest neighbor search, you use a Cross-Encoder model that compares two texts and outputs a similarity score. Specifically, I chose Cohere's Reranker that specializes in comparing Query and Answer chunk pairs.
+
+reply
+
+		
+skeptrune 57 minutes ago | prev | next []
+
+This is the first time I have seen someone use GROBID. It seems like an incredibly cool solution
+
+reply
+
+		
+pugio 10 minutes ago | parent | next []
+
+I've spent the last couple weeks diving into various PDF parsing solutions for scientific documents. GROBID is pretty cool, but it made some mistakes when trying to parse (I think arxiv) papers which removed some of the text.
+
+Even though it gave a lot of great structured options, missing even a single sentence was unforgivable to me. I went with Nougat instead, for arxiv papers.
+
+(Also check out Marker (mentioned on hn in the last month) for pretty high fidelity paper conversion to markdown. Does reasonable job with equations too.)
+
+reply
+
+		
+evanhu_ 33 minutes ago | parent | prev | next []
+
+I spent forever looking at various PDF parsing solutions like Unstructured, and eventually stumbled across GROBID, which was an absolute perfect fit since it's entirely made for scientific papers and has header/section level segmentation capabilities (splitting the paper into Abstract, Introduction, References, etc.) It's lightweight and fast too!
+
+reply
+
+		
+aendruk 33 minutes ago | prev []
+
+Any plans for bioRxiv?
+
+reply
+
+		
+evanhu_ 30 minutes ago | parent []
+
+Yes! I'll set up talk2biorxiv.org very soon as it would be simple to port over. I also plan on making the underlying research PDF RAG framework available as an independent module
+
+reply
+
+Assistant:
+\`\`\`html
+<div class="discussion-summary">
+
+  <p>The comments on the Talk2Arxiv tool reveal a mix of curiosity, technical insights,
+	and suggestions for improvement.  <a href="https://news.ycombinator.com/item?id=38713215">Link to discussion</a>.</p>
+	
+  <div class="discussion">
+    <pUser pushfoo suggests dropping the PDF backend in favor of HTML, which is close to running well. Mentions the potential for handling multiple papers at once and comparing PDF and HTML output.
+    </p>
+  </div>
+  
+  <div class="discussion">
+    <p>
+		Aachen initially expected a platform for discussion with authors and readers but found the RAG (Retrieval-Augmented Generation) chatbot 
+	interesting, though it requires an API key from OpenAI.</p>
+  </div>
+  
+  <div class="discussion">
+    <p>Gorkish and evanhu_ (the author of Talk2Arxiv) discuss technical challenges and solutions, such as context length errors and chunking algorithms. </p>
+  </div>
+  
+  <div class="discussion">
+    <p>	Katella expresses fondness for the URL-changing feature, while ReactiveJelly and Aachen 
+	debate its potential for confusion among casual web users.</p>
+  </div>
+  
+  <div class="discussion">
+    <p>	Zzleeper and evanhu_ delve into the technicalities of reranking and chunking algorithms, with evanhu_ 
+	providing updates to the README for clarity.</p>
+  </div>
+  
+  <div class="discussion">
+    <p>	Skeptrune and pugio share experiences with PDF parsing tools like 
+	GROBID, with pugio preferring Nougat for its accuracy. Evanhu_ praises GROBID for its fit with 
+	scientific papers and plans to expand the service to bioRxiv with talk2biorxiv.org. </p>
+  </div>	
+  `;
+  const template = `Users are discussing the following the following generated summary of an article:
+\`\`\`
+{summary_Article}
+\`\`\`
+
+
+Format the comments section provided below of the post. Focus on capturing the overall sentiment, key observations, and any humorous comments. Highlight diverse opinions and provide a concise overview of how the community has engaged with the topic. What insights or unique perspectives do the comments offer about the article?
+
+<a href="{article_link}"><h1>{article_title}</h1></a>
+\`\`\`article
+{content}
+\`\`\`
+`;
+
+  data.summary = await get_llm_raw(
+	  {},
+	  system,
+	  template,
+	  [],
+	  inputs,
+	  [],
+	  "auto",
+	  null,
+	  model="gpt-4-1106-preview",
+	  0.05
+  );
+
+  //const tags = await get_llm_tags(content);
+	const tags = [];
+  data.tags = tags;
+  data.title = 'Discussion';
+
+  const tagsStr = tags.map(t => `${t.tag}=${t.confidence}` ).join(', ');
+  logger.debug(`[summarise_article] summary: ${data.summary} tags: ${tagsStr}`);
+
+  return data;
+}
+
 
 async function prepareAiArticle(client, group, articles) {
   let content = '';
@@ -619,6 +899,7 @@ Provide simple markdown: `;
 
 }
 
+module.exports.summarise = summarise;
 module.exports.summarise_article = summarise_article;
 module.exports.aiWriter = aiWriter;
 module.exports.startSummariseFeeds = startSummariseFeeds;
