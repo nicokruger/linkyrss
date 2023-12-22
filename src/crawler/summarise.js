@@ -377,29 +377,16 @@ async function summarise(db, article, urls) {
   for (const {summariser,url} of jobs) {
     logger.debug('============= url', url.heading, url.link);
     const page = await db.getPage(url.link);
-    const content = page.pandocCrawl.readableArticle.content.trim();
     const pageSummary = await summariser[0](
       url.heading,
       url.link,
-      content,
+      page,
       pageSummaryMap
     );
     pageSummaries.push({url,pageSummary});
     pageSummaryMap[pageSummary.title] = pageSummary.summary;
   }
 
-
-
-  for (const url of urls) {
-    console.log('============= url', url.heading, url.link);
-    if (_urls.includes(url.link)) continue;
-
-    const page = await db.getPage(url.link);
-    //content += `The following content is from ${url.link}:\n# ${url.heading}\n${page.pandocCrawl.readableArticle.textContent.trim()}\n\n`;
-
-    _urls.push(url.link);
-
-  }
 
   let i = 0;
   let summaryContents = '';
@@ -421,7 +408,9 @@ async function summarise(db, article, urls) {
   return summary;
 }
 
-async function summarise_article(article_heading, article_link, content, summaryMap) {
+async function summarise_article(article_heading, article_link, page, summaryMap) {
+  const content = page.pandocCrawl.readableArticle.content.trim();
+  const title = page.readableArticle.title;
   logger.debug(`[summarise_article] ${content.length} chars`);
 
   const data = {};
@@ -450,7 +439,7 @@ async function summarise_article(article_heading, article_link, content, summary
 	  0.05
   );
 
-  data.title = 'Article';
+  data.title = title;
 
   //const tags = await get_llm_tags(content);
 	const tags = [];
@@ -461,7 +450,8 @@ async function summarise_article(article_heading, article_link, content, summary
 
   return data;
 }
-async function summarise_comments(article_heading, article_link, content, summaryMap) {
+async function summarise_comments(article_heading, article_link, page, summaryMap) {
+  const content = page.pandocCrawl.readableArticle.content.trim();
   logger.debug(`[summarise_comments] ${content.length} chars`);
 
   const data = {};
