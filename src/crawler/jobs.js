@@ -90,7 +90,6 @@ function setupworkers(db, client, opts) {
     const {urls,extra_data} = Object.values(data)[0];
 
     let _urls = [];
-    const summary = {summary:'',tags:[]};
     let content = '';
     //for (const url of urls.slice(0,1)) {
     for (const url of urls) {
@@ -108,17 +107,14 @@ function setupworkers(db, client, opts) {
 
     }
 
-    const urlSummary = await summarise.summarise_article(
+    const summary = await summarise.summarise_article(
       article.link,
       article.description, // not used
       content
     );
-    summary.summary += '<h3>' + url.heading + "</h3>\n" + urlSummary.summary;
-
     console.log('======= summary =====');
     console.log(summary.summary);
 
-    throw new Error('stop');
 
     //console.log('======= article content =====');
     //console.log(article.description);
@@ -128,8 +124,10 @@ function setupworkers(db, client, opts) {
 
     summary.extra_data = extra_data;
 
+    console.log('STORE', key);
     await client.set(key, JSON.stringify(summary));
 
+    throw new Error('stop');
     return articleKey;
 
   }, {
@@ -253,7 +251,7 @@ async function parseAndStoreFeed(feed, n) {
       addmeta: true,
     });
 
-    const latestArticles = _.shuffle(articles.slice(0, 1));
+    const latestArticles = _.shuffle(articles.slice(0, 3));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 

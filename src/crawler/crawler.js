@@ -23,7 +23,8 @@ class Crawler {
 
       logger.debug(`[${this.url}] start puppeteer`);
       await page.goto(this.url, {
-        waitUntil: 'networkidle2',
+        waitUntil: 'load',
+        //waitUntil: 'networkidle2',
         timeout: 60000
       });
       await this.waitTillHTMLRendered(page);

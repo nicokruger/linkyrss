@@ -8,7 +8,7 @@
 <body>
   <h1><%= article.title %></h1>
   <h2>Summary</h2>
-  <div style='width:100%; white-space: pre-wrap'><%- summary.summary %></div>
+  <div><%- summary.summary.trim() %></div>
 
   <h2>Original</h2>
   <h3>Summary</h3>
@@ -18,4 +18,17 @@
   <pre><%= JSON.stringify(summary,null,2) %></pre>
   <pre><%= JSON.stringify(article,null,2) %></pre>
 </body>
+<style>
+article {
+  margin: 0px;
+  padding: 0px;
+}
+article .body .p > i {
+    border-left: 3px solid rgb(221, 221, 221);
+    display: block;
+    font-style: normal;
+    margin: 0.5em;
+    padding-left: 1em;
+}
+</style>
 </html>

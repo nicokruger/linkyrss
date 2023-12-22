@@ -20,13 +20,17 @@ async function findUrlFromIndex(redisClient, index) {
 exports.getArticle = async (client, req, res) => {
   try {
     const keySearch = req.params.articleKey;
-
-    const keys = await client.keys('*' + keySearch + '*');
-    if (!keys || !keys.length) {
-      return res.status(404).send('Nothing found for pattern');
+    let idx = 0;
+    if (req.params.index) {
+      idx = parseInt(req.params.index, 10);
     }
 
-    const key = keys[0];
+    const keys = await client.keys('summary:*' + keySearch + '*');
+    if (!keys || keys.length < idx + 1) {
+      return res.status(404).send(`Article for pattern and index: ${keySearch} ${idx}`);
+    }
+
+    const key = keys[idx];
     console.log(`key: ${key}`);
     if (!await client.exists(key)) {
       return res.status(404).send('Article not found');
@@ -34,7 +38,8 @@ exports.getArticle = async (client, req, res) => {
 
     const article = JSON.parse(await client.get(key));
 
-    const summaryKey = 'summary:' + key;
+    //const summaryKey = 'summary:' + key;
+    const summaryKey = key;
     console.log(`summaryKey: ${summaryKey}`);
     if (!await client.exists(summaryKey)) {
       return res.status(404).send('Article summary not found');
