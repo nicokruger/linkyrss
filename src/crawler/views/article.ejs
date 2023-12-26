@@ -6,7 +6,7 @@
   <title><%= article.articleKey %></title>
 </head>
 <body>
-  <%- include("partials/rss_article.ejs") %>
+  <%- include("partials/rss_article.ejs", {debug:true}) %>
 
   <h2>extra_data</h2>
   <div><%= JSON.stringify(summary.extra_data,null,2) %></div>

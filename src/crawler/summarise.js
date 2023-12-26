@@ -377,16 +377,18 @@ async function summarise(db, article, urls) {
   for (const {summariser,url} of jobs) {
     logger.debug('============= url', url.heading, url.link);
     const page = await db.getPage(url.link);
+    const debug = {};
     const pageSummary = await summariser[0](
       url.heading,
       url.link,
       page,
-      pageSummaryMap
+      pageSummaryMap,
+      debug
     );
     console.log('======= summary contents =====');
     console.log(pageSummary.contents);
     console.log('\n\n');
-    pageSummaries.push({url,pageSummary});
+    pageSummaries.push({url,pageSummary,debug});
     pageSummaryMap[pageSummary.title] = pageSummary.summary;
   }
 
@@ -397,7 +399,7 @@ async function summarise(db, article, urls) {
   return summary;
 }
 
-async function summarise_article(article_heading, article_link, page, summaryMap) {
+async function summarise_article(article_heading, article_link, page, summaryMap, debug) {
   const content = page.pandocCrawl.readableArticle.content.trim();
   const title = page.readableArticle.title;
   logger.debug(`[summarise_article] ${content.length} chars`);
@@ -415,6 +417,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 \`\`\`
 `;
 
+  const out_prompt = [];
   data.summary = await get_llm_raw(
 	  {},
 	  "",
@@ -423,10 +426,11 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  inputs,
 	  [],
 	  "auto",
-	  null,
+	  out_prompt,
 	  model="ft:gpt-3.5-turbo-1106:digitata::8Y5ggQvS",
 	  0.05
   );
+  debug.out_prompt = out_prompt;
 
   data.title = title;
 
@@ -439,7 +443,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 
   return data;
 }
-async function summarise_comments(article_heading, article_link, page, summaryMap) {
+async function summarise_comments(article_heading, article_link, page, summaryMap, debug) {
   const content = page.pandocCrawl.readableArticle.content.trim();
   logger.debug(`[summarise_comments] ${content.length} chars`);
 
@@ -645,6 +649,7 @@ Format the comments section provided below of the post. Focus on capturing the o
 \`\`\`
 `;
 
+  const out_prompt = [];
   data.summary = await get_llm_raw(
 	  {},
 	  system,
@@ -653,10 +658,11 @@ Format the comments section provided below of the post. Focus on capturing the o
 	  inputs,
 	  [],
 	  "auto",
-	  null,
+	  out_prompt,
 	  model="gpt-4-1106-preview",
 	  0.05
   );
+  debug.out_prompt = out_prompt;
 
   //const tags = await get_llm_tags(content);
 	const tags = [];

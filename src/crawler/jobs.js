@@ -98,7 +98,6 @@ function setupworkers(db, client, opts) {
     console.log('STORE', key);
     await client.set(key, JSON.stringify(summary));
 
-    throw new Error('stop');
     return articleKey;
 
   }, {
@@ -242,7 +241,8 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, 1));
+    //const latestArticles = _.shuffle(articles.slice(0, 1));
+    const latestArticles = _.shuffle(articles.slice(0, n));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 

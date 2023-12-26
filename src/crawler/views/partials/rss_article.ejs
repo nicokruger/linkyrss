@@ -16,6 +16,11 @@
     </p>
     <h2><%= pageSummary.pageSummary.title %></h2>
     <div><%- processHtmlContent(pageSummary.pageSummary.summary.trim()) %></div>
+    <% if (debug) { %>
+    <blockquote style='background-color: #cecece; white-space: pre; width:1024px; height:384px; overflow: scroll'>
+      <%= pageSummary.debug.out_prompt[0] %>
+    </blockquote>
+    <% } %>
   </article>
 <% }); %>
 
