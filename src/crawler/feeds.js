@@ -121,7 +121,7 @@ function refeedArticles(articles) {
 
       //const html = marked.parse(cleanMarkdown(summary.summary));
       const template = fs.readFileSync('views/partials/rss_article.ejs').toString();
-      const summaryHtml = ejs.render(template, {cheerio,summary,article});
+      const summaryHtml = ejs.render(template, {cheerio,summary,article,debug:false});
       article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
 
       //const debugArticle = config.baseUrl + '/article/' + encodeURIComponent(article.guid ?? article.id);

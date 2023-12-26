@@ -7,13 +7,9 @@
   return $.html();
 } %>
 
-<h1><%= article.title %></h1>
 <!-- iterate through summary.pageSummaries -->
 <% summary.pageSummaries.forEach(function(pageSummary) { %>
   <article>
-    <p>
-      <a href="<%= pageSummary.url.link %>"><%= pageSummary.url.heading %></a>
-    </p>
     <h2><%= pageSummary.pageSummary.title %></h2>
     <div><%- processHtmlContent(pageSummary.pageSummary.summary.trim()) %></div>
     <% if (debug) { %>
@@ -22,6 +18,10 @@
     </blockquote>
     <% } %>
   </article>
+    <p>
+      <a href="<%= pageSummary.url.link %>"><%= pageSummary.url.heading %></a>
+    </p>
+
 <% }); %>
 
 <% summary.extra_data.links.forEach( function(link) { %>
