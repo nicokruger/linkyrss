@@ -344,10 +344,11 @@ identify:
 
 const summarisers = {
 // key, priority - lower is first
-'Article':[summarise_article,0],
-'default':[summarise_article,0],
-'Comment':[summarise_comments,1],
-'Discussion':[summarise_comments,1]
+'Article':[summarise_article,0,'Article'],
+'Link':[summarise_article,0,'Article'],
+'default':[summarise_article,0,'Article'],
+'Comment':[summarise_comments,1,'Comments'],
+'Discussion':[summarise_comments,1,'Comments']
 }
 function findSummariser(linkText, linkUrl, content) {
   for (const summariser of Object.keys(summarisers)) {
@@ -395,6 +396,7 @@ async function summarise(db, article, urls) {
     console.log('\n\n');
     pageSummaries.push({url,pageSummary,debug});
     pageSummaryMap[pageSummary.title] = pageSummary.summary;
+    pageSummaryMap[summariser[2]] = pageSummary.summary;
   }
 
   const summary = {
@@ -411,6 +413,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 
   const data = {};
   const inputs = {
+    article_heading,
     article_link,
     content,
   }
@@ -640,7 +643,7 @@ Assistant:
 	scientific papers and plans to expand the service to bioRxiv with talk2biorxiv.org. </p>
   </div>	
   `;
-  const template = `Users are discussing the following the following generated summary of an article:
+  const template = `Users are discussing the following generated summary of an article:
 \`\`\`
 {summary_Article}
 \`\`\`
