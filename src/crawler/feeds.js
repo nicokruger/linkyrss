@@ -1,8 +1,11 @@
+const fs = require('fs');
 const { marked } = require('marked');
 const _ = require('lodash');
 const summarise = require('./summarise');
 const { Feed, Category } = require('feed');
 const config = require('./config.js');
+const ejs = require('ejs');
+const cheerio = require('cheerio');
 
 async function getFeed(client, name) {
   const latestArticlesKeys = await client.keys(`article:${name}:*`);
@@ -117,16 +120,11 @@ function refeedArticles(articles) {
 
 
       //const html = marked.parse(cleanMarkdown(summary.summary));
-      const html = cleanHtml(summary.summary);
-      const summaryHtml = `<hr/><h3>AI Summary</h3>${html}`;
+      const template = fs.readFileSync('views/partials/rss_article.ejs').toString();
+      const summaryHtml = ejs.render(template, {cheerio,summary,article});
       article.content = summaryHtml + "<hr/><br/><br/>" + article.description;
 
       //const debugArticle = config.baseUrl + '/article/' + encodeURIComponent(article.guid ?? article.id);
-      const debugArticle = config.baseUrl + '/article/' + encodeURIComponent(article.articleKey);
-      const debugLink = config.baseUrl + '/url/' + encodeURIComponent(article.link);
-      article.content += `<br/><br/><a href="${debugArticle}">Debug Article</a>`;
-      article.content += `<br/><br/><a href="${debugLink}">Debug Link</a>`;
-
       article.category = summary.tags?.map( ({tag,confidence}) => {
         return {
           name: tag,

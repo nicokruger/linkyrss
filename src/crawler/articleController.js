@@ -2,6 +2,7 @@ const redis = require('redis');
 const fs = require('fs');
 const database = require('./database.js');
 const db = new database.FilesystemDatabase("./work");
+const cheerio = require('cheerio');
 
 async function findUrlFromIndex(redisClient, index) {
   const keyFilter = `crawler:*`
@@ -44,7 +45,7 @@ exports.getArticle = async (client, req, res) => {
     const article = JSON.parse(await client.get(key));
     const summary = JSON.parse(await client.get(summaryKey));
 
-    res.render('article', { article, summary });
+    res.render('article', { cheerio, article, summary });
 
   } catch (error) {
     console.error(error);

@@ -13,6 +13,7 @@
     "@dqbd/tiktoken": "^1.0.7",
     "@mozilla/readability": "^0.4.4",
     "bullmq": "^4.2.0",
+    "cheerio": "^1.0.0-rc.12",
     "express": "^4.18.2",
     "feed": "^4.2.2",
     "feedparser": "^2.2.10",

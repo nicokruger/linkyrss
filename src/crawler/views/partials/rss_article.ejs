@@ -1,0 +1,25 @@
+<% function processHtmlContent(rawHtmlContent) {
+  const $ = cheerio.load(rawHtmlContent);
+  $('article .body .p > i').each(function() {
+    const content = $(this).html();
+    $(this).replaceWith(`<blockquote>${content}</blockquote>`);
+  });
+  return $.html();
+} %>
+
+<h1><%= article.title %></h1>
+<!-- iterate through summary.pageSummaries -->
+<% summary.pageSummaries.forEach(function(pageSummary) { %>
+  <article>
+    <p>
+      <a href="<%= pageSummary.url.link %>"><%= pageSummary.url.heading %></a>
+    </p>
+    <h2><%= pageSummary.pageSummary.title %></h2>
+    <div><%- processHtmlContent(pageSummary.pageSummary.summary.trim()) %></div>
+  </article>
+<% }); %>
+
+<% summary.extra_data.links.forEach( function(link) { %>
+  <a href="/url/<%= encodeURIComponent(link.link) %>">View <%= link.text %></a>
+<% }); %>
+

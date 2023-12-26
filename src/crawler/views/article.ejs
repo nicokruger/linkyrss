@@ -6,23 +6,10 @@
   <title><%= article.articleKey %></title>
 </head>
 <body>
-  <h1><%= article.title %></h1>
-  <!-- iterate through summary.pageSummaries -->
-  <% summary.pageSummaries.forEach(function(pageSummary) { %>
-    <article>
-      <p><%= pageSummary.url.heading %> - <%= pageSummary.url.link %></p>
-      <h2><%= pageSummary.pageSummary.title %></h2>
-      <div><%- pageSummary.pageSummary.summary.trim() %></div>
-    </article>
-  <% }); %>
+  <%- include("partials/rss_article.ejs") %>
 
   <h2>extra_data</h2>
   <div><%= JSON.stringify(summary.extra_data,null,2) %></div>
-
-  <% summary.extra_data.links.forEach( function(link) { %>
-    <a href="/url/<%= encodeURIComponent(link.link) %>">View <%= link.text %></a>
-  <% }); %>
-
 
   <h2>Original</h2>
   <div><%- article.summary %></div>
