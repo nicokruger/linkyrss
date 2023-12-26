@@ -409,7 +409,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
     article_link,
     content,
   }
-  const template = `Create a concise, engaging summary about [Topic Name], suitable for a Slashdot-style post. Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
+  const template = `Create a concise, engaging summary about an article titled [{article_heading}], suitable for a Slashdot-style post. Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
 
 {article_link}
 \`\`\`article
