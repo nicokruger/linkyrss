@@ -252,12 +252,11 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    /*
     const latestArticles = _.shuffle(articles.slice(0, n*10))
       .filter( (article) => {
         return article.guid.includes('38765176');
       });
-      */
+    /*
     const latestArticles = [{
   "title": "Ask HN: Share your favorite software blog posts of 2023",
   "description": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>",
@@ -376,6 +375,7 @@ async function parseAndStoreFeed(feed, n) {
   },
   "articleKey": "article:HackerNewsFrontPage:2023-12-25T190929.000Z__https//news.ycombinator.com/item?id=38765176"
 }];
+*/
 
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
