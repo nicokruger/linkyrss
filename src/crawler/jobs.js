@@ -56,7 +56,12 @@ function setupworkers(db, client, opts) {
     const { article, feed, index } = job.data;
     //console.log(article);
 
-    const urls = [{heading:"Article",link:article.link}];
+    let urls = [
+      {
+        heading:"Article",
+        link:article.link
+      }
+    ];
 
     let extra_data = {links:[]};
     if (article.description) {
@@ -64,7 +69,11 @@ function setupworkers(db, client, opts) {
     }
 
     for (const link of extra_data.links) {
-      urls.push({heading:link.text,link:link.link});
+      if (link.link !== article.link) {
+        urls.push({heading:link.text,link:link.link});
+      } else {
+        urls[0].heading = link.text;
+      }
     }
 
     for (const url of urls) {
@@ -91,6 +100,8 @@ function setupworkers(db, client, opts) {
 
     const data = await job.getChildrenValues();
     const {urls,extra_data} = Object.values(data)[0];
+    console.log('extra_data', extra_data);
+    console.log('urls', urls);
 
     const summary = await summarise.summarise(db, article, urls);
     summary.extra_data = extra_data;
@@ -241,7 +252,131 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, n));
+    /*
+    const latestArticles = _.shuffle(articles.slice(0, n*10))
+      .filter( (article) => {
+        return article.guid.includes('38765176');
+      });
+      */
+    const latestArticles = [{
+  "title": "Ask HN: Share your favorite software blog posts of 2023",
+  "description": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>",
+  "summary": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>",
+  "date": new Date("2023-12-25T19:09:29.000Z"),
+  "pubdate": new Date("2023-12-25T19:09:29.000Z"),
+  "pubDate": new Date("2023-12-25T19:09:29.000Z"),
+  "link": "https://news.ycombinator.com/item?id=38765176",
+  "guid": "https://news.ycombinator.com/item?id=38765176",
+  "author": "devta",
+  "comments": "https://news.ycombinator.com/item?id=38765176",
+  "origlink": null,
+  "image": {},
+  "source": {},
+  "categories": [],
+  "enclosures": [],
+  "rss:@": {},
+  "rss:title": {
+    "@": {},
+    "#": "Ask HN: Share your favorite software blog posts of 2023"
+  },
+  "rss:description": {
+    "@": {},
+    "#": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>"
+  },
+  "rss:pubdate": {
+    "@": {},
+    "#": "Mon, 25 Dec 2023 19:09:29 +0000"
+  },
+  "rss:link": {
+    "@": {},
+    "#": "https://news.ycombinator.com/item?id=38765176"
+  },
+  "dc:creator": {
+    "@": {},
+    "#": "devta"
+  },
+  "rss:comments": {
+    "@": {},
+    "#": "https://news.ycombinator.com/item?id=38765176"
+  },
+  "rss:guid": {
+    "@": {
+      "ispermalink": "false"
+    },
+    "#": "https://news.ycombinator.com/item?id=38765176"
+  },
+  "meta": {
+    "#ns": [
+      {
+        "xmlns:dc": "http://purl.org/dc/elements/1.1/"
+      },
+      {
+        "xmlns:atom": "http://www.w3.org/2005/Atom"
+      }
+    ],
+    "@": [
+      {
+        "xmlns:dc": "http://purl.org/dc/elements/1.1/"
+      },
+      {
+        "xmlns:atom": "http://www.w3.org/2005/Atom"
+      }
+    ],
+    "#xml": {},
+    "#type": "rss",
+    "#version": "2.0",
+    "title": "Hacker News: Front Page",
+    "description": "Hacker News RSS",
+    "date": new Date("2023-12-26T07:34:37.000Z"),
+    "pubdate": new Date("2023-12-26T07:34:37.000Z"),
+    "pubDate": new Date("2023-12-26T07:34:37.000Z"),
+    "link": "https://news.ycombinator.com/",
+    "xmlurl": "https://hnrss.org/frontpage",
+    "xmlUrl": "https://hnrss.org/frontpage",
+    "author": null,
+    "language": null,
+    "favicon": null,
+    "copyright": null,
+    "generator": "hnrss v2.1.1",
+    "cloud": {},
+    "image": {},
+    "categories": [],
+    "rss:@": {},
+    "rss:title": {
+      "@": {},
+      "#": "Hacker News: Front Page"
+    },
+    "rss:link": {
+      "@": {},
+      "#": "https://news.ycombinator.com/"
+    },
+    "rss:description": {
+      "@": {},
+      "#": "Hacker News RSS"
+    },
+    "rss:docs": {
+      "@": {},
+      "#": "https://hnrss.org/"
+    },
+    "rss:generator": {
+      "@": {},
+      "#": "hnrss v2.1.1"
+    },
+    "rss:lastbuilddate": {
+      "@": {},
+      "#": "Tue, 26 Dec 2023 07:34:37 +0000"
+    },
+    "atom:link": {
+      "@": {
+        "href": "https://hnrss.org/frontpage",
+        "rel": "self",
+        "type": "application/rss+xml"
+      }
+    }
+  },
+  "articleKey": "article:HackerNewsFrontPage:2023-12-25T190929.000Z__https//news.ycombinator.com/item?id=38765176"
+}];
+
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 

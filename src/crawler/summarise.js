@@ -68,7 +68,28 @@ async function get_llm_summary(chain, inputs) {
   return content.trim();
 }
 
-function shorten_prompt(prompt, opts) {
+function shorten_prompt(in_template, inputs, opts) {
+
+  function replaceVariables(n = -1) {
+    // trim the longest variable
+    if (n > 0) {
+      const keys = Object.keys(inputs);
+      const longest = keys.reduce((a,b) => (inputs[a]?.length ?? 0) > (inputs[b]?.length ?? 0) ? a : b);
+      if (inputs[longest]) {
+        inputs[longest] = inputs[longest].slice(0,inputs[longest].length - n);
+      } else {
+        throw new Error("cannot shorten input variable: " + longest);
+      }
+      //throw new Error('blorper');
+    }
+    let prompt = in_template;
+    for (const k in inputs) {
+      prompt = prompt.replace(`{${k}}`, inputs[k]);
+    }
+    return prompt;
+  }
+
+  let prompt = replaceVariables();
   const enc = encoding_for_model("gpt-3.5-turbo");
   const tokens = enc.encode(prompt);
 
@@ -79,7 +100,8 @@ function shorten_prompt(prompt, opts) {
     const diff = current_tokens - opts.max_tokens;
     const n = Math.max(diff,20);
     // slice of the last n chars
-    prompt = prompt.slice(0,prompt.length - parseInt(n));
+    prompt = replaceVariables(n);
+    //prompt = prompt.slice(0,prompt.length - parseInt(n));
     //console.log('================');
     //console.log(prompt);
     //console.log('=================');
@@ -89,10 +111,15 @@ function shorten_prompt(prompt, opts) {
   }
   enc.free();
 
+  console.log(prompt);
   return prompt;
 
 }
 
+function prepare_prompt(in_template,
+  inputs
+) {
+}
 async function get_llm_raw(
   functiondata,
   system,
@@ -110,17 +137,13 @@ async function get_llm_raw(
   };
   const openai = new OpenAI(configuration);
 
-  // replace the template with the inputs
-  let prompt = in_template;
-  for (const k in inputs) {
-    prompt = prompt.replace(`{${k}}`, inputs[k]);
-  }
 
+  // replace the template with the inputs
   const shorten_opts = {
-    max_tokens: 13000,
+    max_tokens: 10000,
     model
   }
-  prompt = shorten_prompt(prompt, shorten_opts);
+  prompt = shorten_prompt(in_template, inputs, shorten_opts);
   if (out_prompt) out_prompt.push(prompt);
   console.log('==============');
   console.log(prompt);
@@ -379,13 +402,15 @@ async function summarise(db, article, urls) {
   logger.debug(`[summarise] ${article.title} ${article.link} ${JSON.stringify(jobs.map)}`);
 
   const pageSummaries = [];
-  const pageSummaryMap = {};
+  const pageSummaryMap = {
+    'Article': article.description,
+  };
   for (const {summariser,url} of jobs) {
     logger.debug('============= url', url.heading, url.link);
     const page = await db.getPage(url.link);
     const debug = {};
     const pageSummary = await summariser[0](
-      url.heading,
+      article.title,
       url.link,
       page,
       pageSummaryMap,
