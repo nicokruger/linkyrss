@@ -73,14 +73,19 @@ function shorten_prompt(prompt, opts) {
   const tokens = enc.encode(prompt);
 
   let current_tokens = tokens.length;
+  let shortened = false;
   while (current_tokens > opts.max_tokens) {
+    shortened = true;
     const diff = current_tokens - opts.max_tokens;
-    const n = Math.max(diff * 3.2,5);
+    const n = Math.max(diff,20);
     // slice of the last n chars
     prompt = prompt.slice(0,prompt.length - parseInt(n));
+    //console.log('================');
+    //console.log(prompt);
+    //console.log('=================');
     const tokens = enc.encode(prompt);
     current_tokens = tokens.length;
-    logger.warn(`Shortening prompt by ${n} chars to ${current_tokens} tokens`);
+    logger.warn(`Shortening prompt by ${n} chars to ${current_tokens} tokens, current char length ${prompt.length}`);
   }
   enc.free();
 

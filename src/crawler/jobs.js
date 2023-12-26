@@ -241,8 +241,7 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, 1));
-    //const latestArticles = _.shuffle(articles.slice(0, n));
+    const latestArticles = _.shuffle(articles.slice(0, n));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 
