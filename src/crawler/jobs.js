@@ -253,129 +253,221 @@ async function parseAndStoreFeed(feed, n) {
 
 
     const latestArticles = _.shuffle(articles.slice(0, n*10))
-      .filter( (article) => {
-        return article.guid.includes('38765176');
-      });
     /*
-    const latestArticles = [{
-  "title": "Ask HN: Share your favorite software blog posts of 2023",
-  "description": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>",
-  "summary": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>",
-  "date": new Date("2023-12-25T19:09:29.000Z"),
-  "pubdate": new Date("2023-12-25T19:09:29.000Z"),
-  "pubDate": new Date("2023-12-25T19:09:29.000Z"),
-  "link": "https://news.ycombinator.com/item?id=38765176",
-  "guid": "https://news.ycombinator.com/item?id=38765176",
-  "author": "devta",
-  "comments": "https://news.ycombinator.com/item?id=38765176",
+    const latestArticles = [
+{
+  "title": "Peter Watts on conscious ants and human hives",
+  "description": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>",
+  "summary": null,
+  "date": new Date("2023-12-24T09:07:01.000Z"),
+  "pubdate": new Date("2023-12-24T09:07:01.000Z"),
+  "pubDate": new Date("2023-12-24T09:07:01.000Z"),
+  "link": "https://www.youtube.com/watch?v=v4uwaw_5Q3I",
+  "guid": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives",
+  "author": "lou",
+  "comments": null,
   "origlink": null,
   "image": {},
   "source": {},
   "categories": [],
   "enclosures": [],
-  "rss:@": {},
-  "rss:title": {
+  "atom:@": {},
+  "atom:title": {
     "@": {},
-    "#": "Ask HN: Share your favorite software blog posts of 2023"
+    "#": "Peter Watts on conscious ants and human hives"
   },
-  "rss:description": {
+  "atom:id": {
     "@": {},
-    "#": "<p>Hey folks, I'm on the lookout for standout software engineering blog posts this year! Interested in anything from system scaling to crafty architectures, optimization, programming languages, and cool features. Whether it's from open-source projects, companies, or individuals, what are your absolute favorite blogs for tech insights in 2023?<p>P.S. Wishing you all a Merry Christmas and Happy Holidays!</p>\n<hr>\n<p>Comments URL: <a href=\"https://news.ycombinator.com/item?id=38765176\">https://news.ycombinator.com/item?id=38765176</a></p>\n<p>Points: 223</p>\n<p># Comments: 52</p>"
+    "#": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
   },
-  "rss:pubdate": {
-    "@": {},
-    "#": "Mon, 25 Dec 2023 19:09:29 +0000"
-  },
-  "rss:link": {
-    "@": {},
-    "#": "https://news.ycombinator.com/item?id=38765176"
-  },
-  "dc:creator": {
-    "@": {},
-    "#": "devta"
-  },
-  "rss:comments": {
-    "@": {},
-    "#": "https://news.ycombinator.com/item?id=38765176"
-  },
-  "rss:guid": {
+  "atom:link": {
     "@": {
-      "ispermalink": "false"
+      "rel": "alternate",
+      "href": "https://www.youtube.com/watch?v=v4uwaw_5Q3I"
+    }
+  },
+  "atom:content": {
+    "@": {
+      "type": "html"
     },
-    "#": "https://news.ycombinator.com/item?id=38765176"
+    "#": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>"
+  },
+  "atom:author": {
+    "@": {},
+    "name": {
+      "@": {},
+      "#": "lou"
+    }
+  },
+  "atom:updated": {
+    "@": {},
+    "#": "2023-12-24T09:07:01Z"
   },
   "meta": {
     "#ns": [
       {
-        "xmlns:dc": "http://purl.org/dc/elements/1.1/"
-      },
-      {
-        "xmlns:atom": "http://www.w3.org/2005/Atom"
+        "xmlns": "http://www.w3.org/2005/Atom"
       }
     ],
     "@": [
       {
-        "xmlns:dc": "http://purl.org/dc/elements/1.1/"
-      },
-      {
-        "xmlns:atom": "http://www.w3.org/2005/Atom"
+        "xmlns": "http://www.w3.org/2005/Atom"
       }
     ],
-    "#xml": {},
-    "#type": "rss",
-    "#version": "2.0",
-    "title": "Hacker News: Front Page",
-    "description": "Hacker News RSS",
-    "date": new Date("2023-12-26T07:34:37.000Z"),
-    "pubdate": new Date("2023-12-26T07:34:37.000Z"),
-    "pubDate": new Date("2023-12-26T07:34:37.000Z"),
-    "link": "https://news.ycombinator.com/",
-    "xmlurl": "https://hnrss.org/frontpage",
-    "xmlUrl": "https://hnrss.org/frontpage",
+    "#xml": {
+      "version": "1.0",
+      "encoding": "UTF-8"
+    },
+    "#type": "atom",
+    "#version": "1.0",
+    "title": "Tildes Atom feed",
+    "description": null,
+    "date": "2023-12-26T07:49:54.000Z",
+    "pubdate": "2023-12-26T07:49:54.000Z",
+    "pubDate": "2023-12-26T07:49:54.000Z",
+    "link": "https://tildes.net/topics.atom?order=activity",
+    "xmlurl": "https://tildes.net/topics.atom?order=activity",
+    "xmlUrl": "https://tildes.net/topics.atom?order=activity",
     "author": null,
     "language": null,
     "favicon": null,
     "copyright": null,
-    "generator": "hnrss v2.1.1",
+    "generator": null,
     "cloud": {},
     "image": {},
     "categories": [],
-    "rss:@": {},
-    "rss:title": {
-      "@": {},
-      "#": "Hacker News: Front Page"
+    "atom:@": {
+      "xmlns": "http://www.w3.org/2005/Atom"
     },
-    "rss:link": {
+    "atom:title": {
       "@": {},
-      "#": "https://news.ycombinator.com/"
+      "#": "Tildes Atom feed"
     },
-    "rss:description": {
+    "atom:id": {
       "@": {},
-      "#": "Hacker News RSS"
-    },
-    "rss:docs": {
-      "@": {},
-      "#": "https://hnrss.org/"
-    },
-    "rss:generator": {
-      "@": {},
-      "#": "hnrss v2.1.1"
-    },
-    "rss:lastbuilddate": {
-      "@": {},
-      "#": "Tue, 26 Dec 2023 07:34:37 +0000"
+      "#": "https://tildes.net/topics.atom?order=activity"
     },
     "atom:link": {
       "@": {
-        "href": "https://hnrss.org/frontpage",
         "rel": "self",
-        "type": "application/rss+xml"
+        "href": "https://tildes.net/topics.atom?order=activity"
       }
+    },
+    "atom:updated": {
+      "@": {},
+      "#": "2023-12-26T07:49:54Z"
     }
   },
-  "articleKey": "article:HackerNewsFrontPage:2023-12-25T190929.000Z__https//news.ycombinator.com/item?id=38765176"
-}];
-*/
+  "articleKey": "article:Tildes:2023-12-24T090701.000Z__https//tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
+},{
+  "title": "Camel Cards the game",
+  "description": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>",
+  "summary": null,
+  "date": new Date("2023-12-24T13:26:40.000Z"),
+  "pubdate": new Date("2023-12-24T13:26:40.000Z"),
+  "pubDate": new Date("2023-12-24T13:26:40.000Z"),
+  "link": "https://camel.river.me/",
+  "guid": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game",
+  "author": "RheingoldRiver",
+  "comments": null,
+  "origlink": null,
+  "image": {},
+  "source": {},
+  "categories": [],
+  "enclosures": [],
+  "atom:@": {},
+  "atom:title": {
+    "@": {},
+    "#": "Camel Cards the game"
+  },
+  "atom:id": {
+    "@": {},
+    "#": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
+  },
+  "atom:link": {
+    "@": {
+      "rel": "alternate",
+      "href": "https://camel.river.me/"
+    }
+  },
+  "atom:content": {
+    "@": {
+      "type": "html"
+    },
+    "#": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>"
+  },
+  "atom:author": {
+    "@": {},
+    "name": {
+      "@": {},
+      "#": "RheingoldRiver"
+    }
+  },
+  "atom:updated": {
+    "@": {},
+    "#": "2023-12-24T13:26:40Z"
+  },
+  "meta": {
+    "#ns": [
+      {
+        "xmlns": "http://www.w3.org/2005/Atom"
+      }
+    ],
+    "@": [
+      {
+        "xmlns": "http://www.w3.org/2005/Atom"
+      }
+    ],
+    "#xml": {
+      "version": "1.0",
+      "encoding": "UTF-8"
+    },
+    "#type": "atom",
+    "#version": "1.0",
+    "title": "Tildes Atom feed",
+    "description": null,
+    "date": "2023-12-26T07:49:54.000Z",
+    "pubdate": "2023-12-26T07:49:54.000Z",
+    "pubDate": "2023-12-26T07:49:54.000Z",
+    "link": "https://tildes.net/topics.atom?order=activity",
+    "xmlurl": "https://tildes.net/topics.atom?order=activity",
+    "xmlUrl": "https://tildes.net/topics.atom?order=activity",
+    "author": null,
+    "language": null,
+    "favicon": null,
+    "copyright": null,
+    "generator": null,
+    "cloud": {},
+    "image": {},
+    "categories": [],
+    "atom:@": {
+      "xmlns": "http://www.w3.org/2005/Atom"
+    },
+    "atom:title": {
+      "@": {},
+      "#": "Tildes Atom feed"
+    },
+    "atom:id": {
+      "@": {},
+      "#": "https://tildes.net/topics.atom?order=activity"
+    },
+    "atom:link": {
+      "@": {
+        "rel": "self",
+        "href": "https://tildes.net/topics.atom?order=activity"
+      }
+    },
+    "atom:updated": {
+      "@": {},
+      "#": "2023-12-26T07:49:54Z"
+    }
+  },
+  "articleKey": "article:Tildes:2023-12-24T132640.000Z__https//tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
+}
+
+
+    ];
+    */
 
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 

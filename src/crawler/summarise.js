@@ -460,7 +460,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  [],
 	  "auto",
 	  out_prompt,
-	  model="ft:gpt-3.5-turbo-1106:digitata::8Y5ggQvS",
+	  model="ft:gpt-3.5-turbo-1106:digitata::8a3lsV1V",
 	  0.05
   );
   debug.out_prompt = out_prompt;
