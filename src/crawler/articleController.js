@@ -30,20 +30,18 @@ exports.getArticle = async (client, req, res) => {
       return res.status(404).send(`Article for pattern and index: ${keySearch} ${idx}`);
     }
 
-    const key = keys[idx];
-    console.log(`key: ${key}`);
+    const summaryKey = keys[idx];
+    console.log(`key: ${summaryKey}`);
+    if (!await client.exists(summaryKey)) {
+      return res.status(404).send('Article not found');
+    }
+
+    const key = summaryKey.replace('summary:', '');
     if (!await client.exists(key)) {
       return res.status(404).send('Article not found');
     }
 
     const article = JSON.parse(await client.get(key));
-
-    //const summaryKey = 'summary:' + key;
-    const summaryKey = key;
-    console.log(`summaryKey: ${summaryKey}`);
-    if (!await client.exists(summaryKey)) {
-      return res.status(404).send('Article summary not found');
-    }
     const summary = JSON.parse(await client.get(summaryKey));
 
     res.render('article', { article, summary });

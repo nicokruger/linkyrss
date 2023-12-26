@@ -105,6 +105,9 @@ function setupworkers(db, client, opts) {
     ...opts,
     concurrency: 1,
     attempts: 10,
+    backoff: {
+      delay: 99999999,
+    }
     /*
     backoff: {
       type: 'exponential', // or 
@@ -239,7 +242,7 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, 3));
+    const latestArticles = _.shuffle(articles.slice(0, 1));
     logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
 
 

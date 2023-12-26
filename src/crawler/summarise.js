@@ -383,26 +383,15 @@ async function summarise(db, article, urls) {
       page,
       pageSummaryMap
     );
+    console.log('======= summary contents =====');
+    console.log(pageSummary.contents);
+    console.log('\n\n');
     pageSummaries.push({url,pageSummary});
     pageSummaryMap[pageSummary.title] = pageSummary.summary;
   }
 
-
-  let i = 0;
-  let summaryContents = '';
-  for (const {url,pageSummary} of pageSummaries) {
-    summaryContents += `<div class="page">
-<h1>${pageSummary.title} [${i}]</h1>
-\n${pageSummary.summary}
-</div>
-`;
-    i++;
-  }
-  console.log('======= summary contents =====');
-  console.log(summaryContents);
-
   const summary = {
-    summary: summaryContents,
+    pageSummaries,
     tags: [],
   }
   return summary;

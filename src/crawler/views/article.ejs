@@ -7,16 +7,31 @@
 </head>
 <body>
   <h1><%= article.title %></h1>
-  <h2>Summary</h2>
-  <div><%- summary.summary.trim() %></div>
+  <!-- iterate through summary.pageSummaries -->
+  <% summary.pageSummaries.forEach(function(pageSummary) { %>
+    <article>
+      <p><%= pageSummary.url.heading %> - <%= pageSummary.url.link %></p>
+      <h2><%= pageSummary.pageSummary.title %></h2>
+      <div><%- pageSummary.pageSummary.summary.trim() %></div>
+    </article>
+  <% }); %>
+
+  <h2>extra_data</h2>
+  <div><%= JSON.stringify(summary.extra_data,null,2) %></div>
+
+  <% summary.extra_data.links.forEach( function(link) { %>
+    <a href="/url/<%= encodeURIComponent(link.link) %>">View <%= link.text %></a>
+  <% }); %>
+
 
   <h2>Original</h2>
-  <h3>Summary</h3>
   <div><%- article.summary %></div>
   <h3>Description</h3>
   <div><%- article.description %></div>
+
   <pre><%= JSON.stringify(summary,null,2) %></pre>
   <pre><%= JSON.stringify(article,null,2) %></pre>
+
 </body>
 <style>
 article {

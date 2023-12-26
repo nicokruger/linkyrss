@@ -2,10 +2,6 @@
   "python":"python",
   "feeds":[
     {
-      "name":"TelcoTest",
-      "url":"https://feeds.feedburner.com/rcrwireless/sLmV"
-    },
-    {
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage",
       "articleAgeMinutes": 180
