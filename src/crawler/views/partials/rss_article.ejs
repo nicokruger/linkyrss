@@ -1,11 +1,18 @@
-<% function processHtmlContent(rawHtmlContent) {
+<%
+function processHtmlContent(rawHtmlContent) {
   const $ = cheerio.load(rawHtmlContent);
   $('article .body .p > i').each(function() {
     const content = $(this).html();
     $(this).replaceWith(`<blockquote>${content}</blockquote>`);
   });
+  $('a[data-explore]').each(function() {
+    const exploreValue = $(this).attr('data-explore');
+    $(this).attr('href', `https://www.google.com/search?q=${encodeURIComponent(exploreValue)}&btnI`);
+    $(this).attr("target", "_blank");
+  });
   return $.html();
-} %>
+}
+%>
 
 <!-- iterate through summary.pageSummaries -->
 <% summary.pageSummaries.forEach(function(pageSummary) { %>
