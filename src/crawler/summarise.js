@@ -208,7 +208,9 @@ async function get_llm_raw(
         messages,
         functions,
         function_call: functions ? function_call : undefined,
-        temperature
+        temperature,
+        frequency_penalty: 1.1,
+        presence_penalty: 1.1
       });
 
       const resp = await Promise.race([chatCompletionPromise, timeouters]);
