@@ -130,7 +130,8 @@ async function get_llm_raw(
   function_call = "auto",
   out_prompt = null,
   model = "gpt-3.5-turbo-1106",
-  temperature = undefined
+  temperature = undefined,
+  opts = {}
 ) {
   const configuration = {
     apiKey: process.env.OPENAI_API_KEY,
@@ -209,8 +210,7 @@ async function get_llm_raw(
         functions,
         function_call: functions ? function_call : undefined,
         temperature,
-        frequency_penalty: 1.1,
-        presence_penalty: 1.1
+        ...opts
       });
 
       const resp = await Promise.race([chatCompletionPromise, timeouters]);
@@ -463,7 +463,11 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  "auto",
 	  out_prompt,
 	  model="ft:gpt-3.5-turbo-1106:digitata::8a3lsV1V",
-	  0.05
+	  0.05,
+	  {
+      frequency_penalty: 1.1,
+      presence_penalty: 1.1
+	  }
   );
   debug.out_prompt = out_prompt;
 
