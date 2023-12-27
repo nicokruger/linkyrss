@@ -444,7 +444,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
     article_link,
     content,
   }
-  const template = `Create a concise, engaging summary about an article titled [{article_heading}], suitable for a Slashdot-style post. Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
+  const template = `Create a concise, engaging summary about an article titled [${title}], suitable for a link-summarising and sharing platform. Include relevant follow-up exploratory <a data-explore="..."> links to help the user explore related topics (these will be processed afterwards). Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
 
 {article_link}
 \`\`\`article
@@ -462,11 +462,11 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  [],
 	  "auto",
 	  out_prompt,
-	  model="ft:gpt-3.5-turbo-1106:digitata::8a3lsV1V",
+	  model="ft:gpt-3.5-turbo-1106:digitata::8aUYjM2R",
 	  0.05,
 	  {
       frequency_penalty: 1.1,
-      presence_penalty: 1.1
+      presence_penalty: 0
 	  }
   );
   debug.out_prompt = out_prompt;

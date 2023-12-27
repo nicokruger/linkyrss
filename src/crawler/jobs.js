@@ -252,7 +252,8 @@ async function parseAndStoreFeed(feed, n) {
     });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, n*10))
+    const latestArticles = _.shuffle(articles.slice(0, n));
+    //const latestArticles = _.shuffle(articles.slice(0, 2));
     /*
     const latestArticles = [
 {
