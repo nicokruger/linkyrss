@@ -217,12 +217,6 @@ module.exports.getQueues = async (client, workers = false) => {
 }
 
 
-const configFile = process.argv[2];
-if (!configFile) {
-  console.error('Please specify a config file');
-  process.exit(1);
-}
-
 async function parseAndStoreFeed(feed, n) {
   function makeArticleKey(article) {
     const index = ((article.pubDate ?? article.pubdate ?? article.date).toISOString() + '__' + (article.guid ?? article.id)).replace(/:/g,'');
@@ -563,6 +557,12 @@ async function parseAndStoreFeed(feed, n) {
 
 
 async function start() {
+  const configFile = process.argv[2];
+  if (!configFile) {
+    console.error('Please specify a config file');
+    process.exit(1);
+  }
+
   logger.info("Queues start.");
 
   await client.connect();
