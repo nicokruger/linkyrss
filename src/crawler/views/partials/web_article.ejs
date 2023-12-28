@@ -1,0 +1,52 @@
+<%
+function processHtmlContent(rawHtmlContent) {
+  const $ = cheerio.load(rawHtmlContent);
+  $('article .body .p > i').each(function() {
+    const content = $(this).html();
+    $(this).replaceWith(`<blockquote>${content}</blockquote>`);
+  });
+  $('a[data-explore]').each(function() {
+    const exploreValue = $(this).attr('data-explore');
+    $(this).attr('href', `https://www.google.com/search?q=${encodeURIComponent(exploreValue)}&btnI`);
+    $(this).attr("target", "_blank");
+  });
+  return $.html();
+}
+%>
+
+<!-- iterate through summary.pageSummaries -->
+<% summary.pageSummaries.forEach(function(pageSummary) { %>
+  <article>
+    <div class="flex items-center justify-between">
+      <a href="<%= pageSummary.url.link %>"
+        <h2 class="text-xl font-medium text-indigo-600 dark:text-indigo-400"><%= pageSummary.pageSummary.title %></h2>
+      </a>
+      <div class="hidden ml-2 flex-shrink-0 flex">
+        <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">7</p>
+      </div>
+
+    </div>
+    <p class="text-xs dark:text-gray-500 text-gray-400">
+                Posted on <%= new Date(article.pubDate).toLocaleString() %>
+                </p>
+
+    <div class="py-2"><%- processHtmlContent(pageSummary.pageSummary.summary.trim()) %></div>
+    <% if (debug) { %>
+    <blockquote style='background-color: #cecece; white-space: pre; width:1024px; height:384px; overflow: scroll'>
+      <%= pageSummary.debug.out_prompt[0] %>
+    </blockquote>
+    <% } %>
+  </article>
+    <% if (debug) { %>
+    <p>
+      <a href="<%= pageSummary.url.link %>"><%= pageSummary.url.heading %></a>
+    </p>
+    <% } %>
+
+<% }); %>
+
+<% if (debug) { %>
+<% summary.extra_data.links.forEach( function(link) { %>
+  <a href="/url/<%= encodeURIComponent(link.link) %>">View <%= link.text %></a>
+<% }); %>
+<% } %>

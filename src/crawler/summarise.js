@@ -979,8 +979,8 @@ https://www.commonroom.chat/
 	    model="ft:gpt-3.5-turbo-1106:digitata::8ah0EcBz",
 	    0.05,
 	    {
-        frequency_penalty: 1,
-        presence_penalty: 1.1
+        frequency_penalty: 0,
+        presence_penalty: 0
 	    }
     );
     console.log(d);

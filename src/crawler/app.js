@@ -4,6 +4,7 @@ const express = require('express');
 const app = express();
 const path = require('path');
 const articleController = require('./articleController');
+const browseController = require('./browseController');
 const { createBullBoard } = require('@bull-board/api');
 const { BullAdapter } = require('@bull-board/api/bullAdapter');
 //const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
@@ -22,6 +23,7 @@ app.get('/article/:articleKey', articleController.getArticle.bind(null, client))
 app.get('/article/:articleKey/:index', articleController.getArticle.bind(null, client));
 app.get('/url/:url', articleController.getUrl.bind(null, client));
 app.get('/content/:index', articleController.getContent.bind(null, client));
+app.get('/browse/:name', browseController.browseFeed.bind(null, client));
 
 app.get('/feed/:name', async (req, res) => {
   const newFeedUrl = req.url;
