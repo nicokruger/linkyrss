@@ -226,330 +226,338 @@ async function parseAndStoreFeed(feed, n) {
   const queues = await module.exports.getQueues(client);
 
   const {url,name} = feed;
+  let urls = [url];
+  if (feed.urls) {
+    urls = feed.urls;
+  }
   const articleAgeMinutes = feed.articleAgeMinutes ?? 0;
-  try {
-    let articles = await feedparser.parse(url, {
-      addmeta: true,
-    });
-    articles = articles.filter(article => {
-      const articleDate = article.pubDate ?? article.pubdate ?? article.date;
-      if (!articleDate) {
-        logger.debug(`[REFEED] ${name} including article with no date`);
+  let i = 0;
+  for (const url of urls) {
+    logger.debug(`[REFEED] ${name} fetching ${url} (${i++}/${urls.length})`);
+    try {
+      let articles = await feedparser.parse(url, {
+        addmeta: true,
+      });
+      articles = articles.filter(article => {
+        const articleDate = article.pubDate ?? article.pubdate ?? article.date;
+        if (!articleDate) {
+          logger.debug(`[REFEED] ${name} including article with no date`);
+          return true;
+        }
+        const age = (new Date() - articleDate) / 1000 / 60;
+        if (age < articleAgeMinutes) {
+          logger.debug(`[REFEED] ${name} skipping article ${age} minutes old`);
+          return false;
+        }
         return true;
-      }
-      const age = (new Date() - articleDate) / 1000 / 60;
-      if (age < articleAgeMinutes) {
-        logger.debug(`[REFEED] ${name} skipping article ${age} minutes old`);
-        return false;
-      }
-      return true;
-    });
+      });
 
 
-    const latestArticles = _.shuffle(articles.slice(0, n));
-    /*
-    const latestArticles = [
-{
-  "title": "Peter Watts on conscious ants and human hives",
-  "description": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>",
-  "summary": null,
-  "date": new Date("2023-12-24T09:07:01.000Z"),
-  "pubdate": new Date("2023-12-24T09:07:01.000Z"),
-  "pubDate": new Date("2023-12-24T09:07:01.000Z"),
-  "link": "https://www.youtube.com/watch?v=v4uwaw_5Q3I",
-  "guid": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives",
-  "author": "lou",
-  "comments": null,
-  "origlink": null,
-  "image": {},
-  "source": {},
-  "categories": [],
-  "enclosures": [],
-  "atom:@": {},
-  "atom:title": {
-    "@": {},
-    "#": "Peter Watts on conscious ants and human hives"
-  },
-  "atom:id": {
-    "@": {},
-    "#": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
-  },
-  "atom:link": {
-    "@": {
-      "rel": "alternate",
-      "href": "https://www.youtube.com/watch?v=v4uwaw_5Q3I"
-    }
-  },
-  "atom:content": {
-    "@": {
-      "type": "html"
-    },
-    "#": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>"
-  },
-  "atom:author": {
-    "@": {},
-    "name": {
-      "@": {},
-      "#": "lou"
-    }
-  },
-  "atom:updated": {
-    "@": {},
-    "#": "2023-12-24T09:07:01Z"
-  },
-  "meta": {
-    "#ns": [
-      {
-        "xmlns": "http://www.w3.org/2005/Atom"
-      }
-    ],
-    "@": [
-      {
-        "xmlns": "http://www.w3.org/2005/Atom"
-      }
-    ],
-    "#xml": {
-      "version": "1.0",
-      "encoding": "UTF-8"
-    },
-    "#type": "atom",
-    "#version": "1.0",
-    "title": "Tildes Atom feed",
-    "description": null,
-    "date": "2023-12-26T07:49:54.000Z",
-    "pubdate": "2023-12-26T07:49:54.000Z",
-    "pubDate": "2023-12-26T07:49:54.000Z",
-    "link": "https://tildes.net/topics.atom?order=activity",
-    "xmlurl": "https://tildes.net/topics.atom?order=activity",
-    "xmlUrl": "https://tildes.net/topics.atom?order=activity",
-    "author": null,
-    "language": null,
-    "favicon": null,
-    "copyright": null,
-    "generator": null,
-    "cloud": {},
+      const latestArticles = _.shuffle(articles.slice(0, n));
+      /*
+      const latestArticles = [
+  {
+    "title": "Peter Watts on conscious ants and human hives",
+    "description": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>",
+    "summary": null,
+    "date": new Date("2023-12-24T09:07:01.000Z"),
+    "pubdate": new Date("2023-12-24T09:07:01.000Z"),
+    "pubDate": new Date("2023-12-24T09:07:01.000Z"),
+    "link": "https://www.youtube.com/watch?v=v4uwaw_5Q3I",
+    "guid": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives",
+    "author": "lou",
+    "comments": null,
+    "origlink": null,
     "image": {},
+    "source": {},
     "categories": [],
-    "atom:@": {
-      "xmlns": "http://www.w3.org/2005/Atom"
-    },
+    "enclosures": [],
+    "atom:@": {},
     "atom:title": {
       "@": {},
-      "#": "Tildes Atom feed"
+      "#": "Peter Watts on conscious ants and human hives"
     },
     "atom:id": {
       "@": {},
-      "#": "https://tildes.net/topics.atom?order=activity"
+      "#": "https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
     },
     "atom:link": {
       "@": {
-        "rel": "self",
-        "href": "https://tildes.net/topics.atom?order=activity"
+        "rel": "alternate",
+        "href": "https://www.youtube.com/watch?v=v4uwaw_5Q3I"
+      }
+    },
+    "atom:content": {
+      "@": {
+        "type": "html"
+      },
+      "#": "<p>Link URL: <a href=\"https://www.youtube.com/watch?v=v4uwaw_5Q3I\">https://www.youtube.com/watch?v=v4uwaw_5Q3I</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives\">https://tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives</a></p>\n                <p>Votes: 14</p>\n                <p>Comments: 3</p>"
+    },
+    "atom:author": {
+      "@": {},
+      "name": {
+        "@": {},
+        "#": "lou"
       }
     },
     "atom:updated": {
       "@": {},
-      "#": "2023-12-26T07:49:54Z"
-    }
-  },
-  "articleKey": "article:Tildes:2023-12-24T090701.000Z__https//tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
-},{
-  "title": "Camel Cards the game",
-  "description": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>",
-  "summary": null,
-  "date": new Date("2023-12-24T13:26:40.000Z"),
-  "pubdate": new Date("2023-12-24T13:26:40.000Z"),
-  "pubDate": new Date("2023-12-24T13:26:40.000Z"),
-  "link": "https://camel.river.me/",
-  "guid": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game",
-  "author": "RheingoldRiver",
-  "comments": null,
-  "origlink": null,
-  "image": {},
-  "source": {},
-  "categories": [],
-  "enclosures": [],
-  "atom:@": {},
-  "atom:title": {
-    "@": {},
-    "#": "Camel Cards the game"
-  },
-  "atom:id": {
-    "@": {},
-    "#": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
-  },
-  "atom:link": {
-    "@": {
-      "rel": "alternate",
-      "href": "https://camel.river.me/"
-    }
-  },
-  "atom:content": {
-    "@": {
-      "type": "html"
+      "#": "2023-12-24T09:07:01Z"
     },
-    "#": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>"
-  },
-  "atom:author": {
-    "@": {},
-    "name": {
-      "@": {},
-      "#": "RheingoldRiver"
-    }
-  },
-  "atom:updated": {
-    "@": {},
-    "#": "2023-12-24T13:26:40Z"
-  },
-  "meta": {
-    "#ns": [
-      {
+    "meta": {
+      "#ns": [
+        {
+          "xmlns": "http://www.w3.org/2005/Atom"
+        }
+      ],
+      "@": [
+        {
+          "xmlns": "http://www.w3.org/2005/Atom"
+        }
+      ],
+      "#xml": {
+        "version": "1.0",
+        "encoding": "UTF-8"
+      },
+      "#type": "atom",
+      "#version": "1.0",
+      "title": "Tildes Atom feed",
+      "description": null,
+      "date": "2023-12-26T07:49:54.000Z",
+      "pubdate": "2023-12-26T07:49:54.000Z",
+      "pubDate": "2023-12-26T07:49:54.000Z",
+      "link": "https://tildes.net/topics.atom?order=activity",
+      "xmlurl": "https://tildes.net/topics.atom?order=activity",
+      "xmlUrl": "https://tildes.net/topics.atom?order=activity",
+      "author": null,
+      "language": null,
+      "favicon": null,
+      "copyright": null,
+      "generator": null,
+      "cloud": {},
+      "image": {},
+      "categories": [],
+      "atom:@": {
         "xmlns": "http://www.w3.org/2005/Atom"
+      },
+      "atom:title": {
+        "@": {},
+        "#": "Tildes Atom feed"
+      },
+      "atom:id": {
+        "@": {},
+        "#": "https://tildes.net/topics.atom?order=activity"
+      },
+      "atom:link": {
+        "@": {
+          "rel": "self",
+          "href": "https://tildes.net/topics.atom?order=activity"
+        }
+      },
+      "atom:updated": {
+        "@": {},
+        "#": "2023-12-26T07:49:54Z"
       }
-    ],
-    "@": [
-      {
-        "xmlns": "http://www.w3.org/2005/Atom"
-      }
-    ],
-    "#xml": {
-      "version": "1.0",
-      "encoding": "UTF-8"
     },
-    "#type": "atom",
-    "#version": "1.0",
-    "title": "Tildes Atom feed",
-    "description": null,
-    "date": "2023-12-26T07:49:54.000Z",
-    "pubdate": "2023-12-26T07:49:54.000Z",
-    "pubDate": "2023-12-26T07:49:54.000Z",
-    "link": "https://tildes.net/topics.atom?order=activity",
-    "xmlurl": "https://tildes.net/topics.atom?order=activity",
-    "xmlUrl": "https://tildes.net/topics.atom?order=activity",
-    "author": null,
-    "language": null,
-    "favicon": null,
-    "copyright": null,
-    "generator": null,
-    "cloud": {},
+    "articleKey": "article:Tildes:2023-12-24T090701.000Z__https//tildes.net/~books/1d42/peter_watts_on_conscious_ants_and_human_hives"
+  },{
+    "title": "Camel Cards the game",
+    "description": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>",
+    "summary": null,
+    "date": new Date("2023-12-24T13:26:40.000Z"),
+    "pubdate": new Date("2023-12-24T13:26:40.000Z"),
+    "pubDate": new Date("2023-12-24T13:26:40.000Z"),
+    "link": "https://camel.river.me/",
+    "guid": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game",
+    "author": "RheingoldRiver",
+    "comments": null,
+    "origlink": null,
     "image": {},
+    "source": {},
     "categories": [],
-    "atom:@": {
-      "xmlns": "http://www.w3.org/2005/Atom"
-    },
+    "enclosures": [],
+    "atom:@": {},
     "atom:title": {
       "@": {},
-      "#": "Tildes Atom feed"
+      "#": "Camel Cards the game"
     },
     "atom:id": {
       "@": {},
-      "#": "https://tildes.net/topics.atom?order=activity"
+      "#": "https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
     },
     "atom:link": {
       "@": {
-        "rel": "self",
-        "href": "https://tildes.net/topics.atom?order=activity"
+        "rel": "alternate",
+        "href": "https://camel.river.me/"
+      }
+    },
+    "atom:content": {
+      "@": {
+        "type": "html"
+      },
+      "#": "<p>Link URL: <a href=\"https://camel.river.me/\">https://camel.river.me/</a></p>\n                <p>Comments URL: <a href=\"https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game\">https://tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game</a></p>\n                <p>Votes: 4</p>\n                <p>Comments: 1</p>"
+    },
+    "atom:author": {
+      "@": {},
+      "name": {
+        "@": {},
+        "#": "RheingoldRiver"
       }
     },
     "atom:updated": {
       "@": {},
-      "#": "2023-12-26T07:49:54Z"
-    }
-  },
-  "articleKey": "article:Tildes:2023-12-24T132640.000Z__https//tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
-}
-
-
-    ];
-    */
-
-    logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
-
-
-    if (!latestArticles.length) {
-      logger.warn('there are no jobs for feed ' + feed.name);
-      return;
-    }
-
-    // first, filter out articles that are busy and/or stuck somewhere
-    const filteredArticles = [];
-    for (const article of latestArticles) {
-      const {articleKey,index} = makeArticleKey(article);
-      if (!(await markArticleBusy(client, articleKey))) {
-        logger.debug('article already busy', articleKey);
-        continue;
+      "#": "2023-12-24T13:26:40Z"
+    },
+    "meta": {
+      "#ns": [
+        {
+          "xmlns": "http://www.w3.org/2005/Atom"
+        }
+      ],
+      "@": [
+        {
+          "xmlns": "http://www.w3.org/2005/Atom"
+        }
+      ],
+      "#xml": {
+        "version": "1.0",
+        "encoding": "UTF-8"
+      },
+      "#type": "atom",
+      "#version": "1.0",
+      "title": "Tildes Atom feed",
+      "description": null,
+      "date": "2023-12-26T07:49:54.000Z",
+      "pubdate": "2023-12-26T07:49:54.000Z",
+      "pubDate": "2023-12-26T07:49:54.000Z",
+      "link": "https://tildes.net/topics.atom?order=activity",
+      "xmlurl": "https://tildes.net/topics.atom?order=activity",
+      "xmlUrl": "https://tildes.net/topics.atom?order=activity",
+      "author": null,
+      "language": null,
+      "favicon": null,
+      "copyright": null,
+      "generator": null,
+      "cloud": {},
+      "image": {},
+      "categories": [],
+      "atom:@": {
+        "xmlns": "http://www.w3.org/2005/Atom"
+      },
+      "atom:title": {
+        "@": {},
+        "#": "Tildes Atom feed"
+      },
+      "atom:id": {
+        "@": {},
+        "#": "https://tildes.net/topics.atom?order=activity"
+      },
+      "atom:link": {
+        "@": {
+          "rel": "self",
+          "href": "https://tildes.net/topics.atom?order=activity"
+        }
+      },
+      "atom:updated": {
+        "@": {},
+        "#": "2023-12-26T07:49:54Z"
       }
-      filteredArticles.push(article);
-    };
+    },
+    "articleKey": "article:Tildes:2023-12-24T132640.000Z__https//tildes.net/~comp.advent_of_code/1d44/camel_cards_the_game"
+  }
 
-    let first = true;
-    let i = 0;
-    const chunkedArticles = _.chunk(filteredArticles, 20);
-    for (const chunk of chunkedArticles) {
-      const children = [];
-      for (const article of chunk) {
-        //console.log('article');
-        //console.log('===========================')
-        //console.log(JSON.stringify(article,null,2));
-        //console.log('===========================')
 
+      ];
+      */
+
+      logger.info(`[REFEED] ${name} ${latestArticles.length} articles`);
+
+
+      if (!latestArticles.length) {
+        logger.warn('there are no jobs for feed ' + feed.name);
+        return;
+      }
+
+      // first, filter out articles that are busy and/or stuck somewhere
+      const filteredArticles = [];
+      for (const article of latestArticles) {
         const {articleKey,index} = makeArticleKey(article);
-        article.articleKey = articleKey;
-
-        if (first) {
-          const feedData = {
-            meta: article.meta,
-            ...feed,
-          }
-          await client.set(`feed:${name}`, JSON.stringify(feedData));
-          first = false;
+        if (!(await markArticleBusy(client, articleKey))) {
+          logger.debug('article already busy', articleKey);
+          continue;
         }
-
-        if (article.link === undefined
-            || article.link === null
-            || article.link === '') {
-          logger.error(feed.name, 'article has no link', article);
-          return;
-        }
-
-        const url = article.link;
-
-        await client.set(articleKey, JSON.stringify(article));
-
-        children.push({
-          name: 'summarize',
-          queueName: queues.summarizerQueue.name,
-          data: { feed: feed.name, article, index, url, articleKey },
-          children: [
-            {
-              name: 'pageCrawler',
-              queueName: queues.pageCrawlerQueue.name,
-              data: { feed: feed.name, article, index, url },
-            },
-          ]
-        });
-
-
+        filteredArticles.push(article);
       };
 
-      await queues.flowProducer.add({
-        name: feed.name,
-        queueName: queues.rssFeedQueue.name,
-        data: {
-          feed: feed.name,
-          time: new Date().toISOString(),
-          chunkNum:i,
-          total: chunk.length
-        },
-        children
-      });
-      i++;
+      let first = true;
+      let i = 0;
+      const chunkedArticles = _.chunk(filteredArticles, 20);
+      for (const chunk of chunkedArticles) {
+        const children = [];
+        for (const article of chunk) {
+          //console.log('article');
+          //console.log('===========================')
+          //console.log(JSON.stringify(article,null,2));
+          //console.log('===========================')
+
+          const {articleKey,index} = makeArticleKey(article);
+          article.articleKey = articleKey;
+
+          if (first) {
+            const feedData = {
+              meta: article.meta,
+              ...feed,
+            }
+            await client.set(`feed:${name}`, JSON.stringify(feedData));
+            first = false;
+          }
+
+          if (article.link === undefined
+              || article.link === null
+              || article.link === '') {
+            logger.error(feed.name, 'article has no link', article);
+            return;
+          }
+
+          const url = article.link;
+
+          await client.set(articleKey, JSON.stringify(article));
+
+          children.push({
+            name: 'summarize',
+            queueName: queues.summarizerQueue.name,
+            data: { feed: feed.name, article, index, url, articleKey },
+            children: [
+              {
+                name: 'pageCrawler',
+                queueName: queues.pageCrawlerQueue.name,
+                data: { feed: feed.name, article, index, url },
+              },
+            ]
+          });
 
 
+        };
+
+        await queues.flowProducer.add({
+          name: feed.name,
+          queueName: queues.rssFeedQueue.name,
+          data: {
+            feed: feed.name,
+            time: new Date().toISOString(),
+            chunkNum:i,
+            total: chunk.length
+          },
+          children
+        });
+        i++;
+
+
+      }
+
+    } catch (error) {
+      console.error('Error parsing and storing feed:', error);
     }
-
-  } catch (error) {
-    console.error('Error parsing and storing feed:', error);
   }
 }
 
@@ -585,6 +593,10 @@ async function start() {
 
         logger.info('Look for feeds.');
         for (const feed of config.feeds) {
+          if (feed.paused) {
+            logger.info(`[REFEED] ${feed.name} is paused`);
+            continue;
+          }
           logger.info(`[REFEED] ${feed.name}`);
           parseAndStoreFeed(feed, 1000);
           //queues.rssFeedQueue.add('rssFeed', { feed, n: 10 });

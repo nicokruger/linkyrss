@@ -4,27 +4,41 @@
     {
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage",
-      "articleAgeMinutes": 180
+      "articleAgeMinutes": 180,
+      "paused":false
     },
     {
       "name":"LobstersNewest",
-      "url":"https://lobste.rs/newest.rss"
+      "url":"https://lobste.rs/newest.rss",
+      "paused":false
     },
     {
       "name":"Tildes",
-      "url":"https://tildes.net/topics.atom?order=activity"
+      "url":"https://tildes.net/topics.atom?order=activity",
+      "paused":false
     },
     {
       "name":"StaySAASY",
-      "url":"https://staysaasy.com/feed.xml"
+      "url":"https://staysaasy.com/feed.xml",
+      "paused":false
     },
     {
       "name":"SVPG",
-      "url":"https://www.svpg.com/feed"
+      "url":"https://www.svpg.com/feed",
+      "paused":false
     },
     {
       "name":"TelcoTest",
-      "url":"https://feeds.feedburner.com/rcrwireless/sLmV"
+      "urls":[
+        "https://feeds.feedburner.com/rcrwireless/sLmV",
+        "https://www.telecomramblings.com/feed/",
+        "https://www.lifecycle-software.com/resources/rss.xml",
+        "https://telecomtalk.info/feed/",
+        "https://www.telekom.com/service/rss/1714/feed.rss",
+        "https://web.telecompaper.com/syndication/rss.aspx",
+        "https://www.fiercetelecom.com/rss/telecom/xml",
+        "https://feeds.feedburner.com/rcrwireless/sLmV"
+      ]
     }
 
 
