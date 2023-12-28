@@ -5,30 +5,30 @@
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage",
       "articleAgeMinutes": 180,
-      "paused":false
+      "paused":true
     },
     {
       "name":"LobstersNewest",
       "url":"https://lobste.rs/newest.rss",
-      "paused":false
+      "paused":true
     },
     {
       "name":"Tildes",
       "url":"https://tildes.net/topics.atom?order=activity",
-      "paused":false
+      "paused":true
     },
     {
       "name":"StaySAASY",
       "url":"https://staysaasy.com/feed.xml",
-      "paused":false
+      "paused":true
     },
     {
       "name":"SVPG",
       "url":"https://www.svpg.com/feed",
-      "paused":false
+      "paused":true
     },
     {
-      "name":"TelcoTest",
+      "name":"TelcoFeed",
       "urls":[
         "https://feeds.feedburner.com/rcrwireless/sLmV",
         "https://www.telecomramblings.com/feed/",
