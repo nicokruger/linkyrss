@@ -466,7 +466,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  0.05,
 	  {
       frequency_penalty: 1.1,
-      presence_penalty: 0
+      presence_penalty: 1.1
 	  }
   );
   debug.out_prompt = out_prompt;
