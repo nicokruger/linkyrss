@@ -462,7 +462,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  [],
 	  "auto",
 	  out_prompt,
-	  model="ft:gpt-3.5-turbo-1106:digitata::8aUYjM2R",
+          model="ft:gpt-3.5-turbo-1106:digitata::8ah0EcBz",
 	  0.05,
 	  {
       frequency_penalty: 1.1,
