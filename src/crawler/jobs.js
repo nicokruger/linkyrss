@@ -31,10 +31,13 @@ async function markArticleBusy(client, articleKey) {
   await client.set(busyKey, new Date().toISOString());
   return true;
 }
+
 function clearArticleBusy(client, articleKey) {
   const busyKey = `busy:${articleKey}`;
   return client.del(busyKey);
 }
+
+
 function setupworkers(db, client, opts) {
   // Setup the workers
   new Worker('feed', async (job) => {
@@ -523,6 +526,7 @@ async function parseAndStoreFeed(feed, n) {
 
           await client.set(articleKey, JSON.stringify(article));
 
+          /*
           children.push({
             name: 'summarize',
             queueName: queues.summarizerQueue.name,
@@ -534,6 +538,12 @@ async function parseAndStoreFeed(feed, n) {
                 data: { feed: feed.name, article, index, url },
               },
             ]
+          });
+          */
+          children.push({
+            name: 'pageCrawler',
+            queueName: queues.pageCrawlerQueue.name,
+            data: { feed: feed.name, article, index, url },
           });
 
 
@@ -610,7 +620,6 @@ async function start() {
 
 if (require.main === module) {
   start().then(console.log);
-
 }
 
 

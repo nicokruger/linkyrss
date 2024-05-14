@@ -11,10 +11,10 @@
   <img src="<%= screenshot %>" alt="Screenshot">
 
   <h3>Readable Original</h3>
-  <pre><%= article.readableArticle.textContent %></pre>
+  <%- article.readableArticle.content %>
 
   <h3>Readable Pandoc</h3>
-  <pre><%= article.pandocCrawl.readableArticle.textContent %></pre>
+  <%- article.pandocCrawl.readableArticle.content %>
 
   <h3>Original</h3>
   <pre><%= article.content %></pre>

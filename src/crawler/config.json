@@ -5,12 +5,12 @@
       "name":"HackerNewsFrontPage",
       "url":"https://hnrss.org/frontpage",
       "articleAgeMinutes": 180,
-      "paused":false
+      "paused":true
     },
     {
       "name":"LobstersNewest",
       "url":"https://lobste.rs/newest.rss",
-      "paused":true
+      "paused":false
     },
     {
       "name":"Tildes",
@@ -38,7 +38,8 @@
         "https://web.telecompaper.com/syndication/rss.aspx",
         "https://www.fiercetelecom.com/rss/telecom/xml",
         "https://feeds.feedburner.com/rcrwireless/sLmV"
-      ]
+      ],
+      "paused":true
     }
 
 

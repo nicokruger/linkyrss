@@ -434,7 +434,8 @@ async function summarise(db, article, urls) {
 }
 
 async function summarise_article(article_heading, article_link, page, summaryMap, debug) {
-  const content = page.pandocCrawl.readableArticle.content.trim();
+  //const content = page.pandocCrawl.readableArticle.content.trim();
+  const content = page.readableArticle.content.trim();
   const title = page.readableArticle.title;
   logger.debug(`[summarise_article] ${content.length} chars`);
 
@@ -462,7 +463,7 @@ async function summarise_article(article_heading, article_link, page, summaryMap
 	  [],
 	  "auto",
 	  out_prompt,
-          model="ft:gpt-3.5-turbo-1106:digitata::8ah0EcBz",
+    model="ft:gpt-3.5-turbo-1106:digitata::8ah0EcBz",
 	  0.05,
 	  {
       frequency_penalty: 1.1,
@@ -945,28 +946,35 @@ function cleanTitle(title) {
 if (require.main == module) {
   (async function () {
     const template = `
-      Create a concise, engaging summary about an article titled [Commonroom: Terms & Conditions], suitable for a link-summarising and sharing platform. Include relevant follow-up exploratory <a data-explore="..."> links to help the user explore related topics (these will be processed afterwards). Focus on key technical details and current relevance. Include suggestions for relevant source links and ensure the tone is suited to a knowledgeable, tech-oriented audience. Aim to spark interest and discussion within the community.
+      Create a concise, engaging summary about an article titled [2024], suitable for a link-summarising and sharing platform. Include relevant follow-up exploratory <a data-explore="..."> links to help the user explore related topics (these will be processed afterwards). Focus on key technical details and current relevance. 
 
-https://www.commonroom.chat/
+https://xkcd.com/2875/
 \`\`\`article
 <div id="readability-page-1" class="page"><div>
-<p>📄 Terms &amp; Conditions</p>
-<h2 id="welcome-to-commonroom">Welcome to Commonroom!</h2>
-<p>Each chat here is a transient journey, echoing the ephemeral nature of hostel common rooms. Our platform offers a space for serendipitous and fleeting group connections.</p>
-<p>As you begin making anonymous friends on Commonroom, we ask that you navigate with respect and consideration. In this shared space, we uphold a few simple rules to ensure that everyone enjoys their time in our rooms:</p>
-<ol type="1">
-<li><strong>Acceptance of Terms:</strong> By accessing or using Commonroom, you agree to be bound by these terms and conditions. If you do not agree with any part of these terms, please do not use our platform.</li>
-<li><strong>User Conduct:</strong> We believe in the power of respectful and positive interactions. Any form of harassment, hate speech, or disrespectful behavior will not be tolerated.</li>
-<li><strong>Age Requirement:</strong> Users must be 18 years or older to use Commonroom. Minors are not permitted to use our platform.</li>
-<li><strong>Content Guidelines:</strong> Share content that is appropriate and respectful. Any content deemed offensive, harmful, or inappropriate will be removed, and may result in an IP ban.</li>
-</ol>
-<p>Embark on your Commonroom adventure with an open heart and a curious mind. Happy chatting!</p>
-<p><em>PS: Nothing lasts forever.</em></p>
-<p>I Accept the Terms &amp; Conditions. Let me Join the Chat!</p>
+<figure>
+<img src="" alt="Selected Comics">
+
+</figure>
+<p><br>
+<a href="https://xkcd.com/1732/"><img src="" alt="Earth temperature timeline"></a><br>
+</p>
+
+
+<div>
+<p>Comics I enjoy:<br>
+<a href="http://threewordphrase.com/">Three Word Phrase</a>, <a href="https://www.smbc-comics.com/">SMBC</a>, <a href="https://www.qwantz.com/">Dinosaur Comics</a>, <a href="https://oglaf.com/">Oglaf</a> (nsfw), <a href="https://www.asofterworld.com/">A Softer World</a>, <a href="https://buttersafe.com/">Buttersafe</a>, <a href="https://pbfcomics.com/">Perry Bible Fellowship</a>, <a href="https://questionablecontent.net/">Questionable Content</a>, <a href="http://www.buttercupfestival.com/">Buttercup Festival</a>, <a href="https://www.homestuck.com/">Homestuck</a>, <a href="https://www.jspowerhour.com/">Junior Scientist Power Hour</a></p>
+</div>
+
+
+
+<p>xkcd.com is best viewed with Netscape Navigator 4.0 or below on a Pentium 3±1 emulated in Javascript on an Apple IIGS<br>
+at a screen resolution of 1024x1. Please enable your ad blockers, disable high-heat drying, and remove your device<br>
+from Airplane Mode and set it to Boat Mode. For security reasons, please leave caps lock on while browsing.</p>
+
 </div></div>
 \`\`\`
-`
-;
+
+`;
     const d = await get_llm_raw(
 	    {},
 	    "",
@@ -977,10 +985,11 @@ https://www.commonroom.chat/
 	    "auto",
 	    null,
 	    model="ft:gpt-3.5-turbo-1106:digitata::8ah0EcBz",
-	    0.05,
+	    //model=undefined,
+	    0.00,
 	    {
-        frequency_penalty: 0,
-        presence_penalty: 0
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1
 	    }
     );
     console.log(d);
