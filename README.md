@@ -86,6 +86,21 @@ Run the application:
 
 Navigate to *localhost:8080* on your web browser to start using LinkyRSS!
 
+## Test environment with Docker 🐳
+
+`scripts/test-env.sh` builds and runs the whole stack (Redis, the crawler web app and the crawler job workers) with Docker Compose, from any branch:
+
+```bash
+export OPENAI_API_KEY=your_openai_key
+scripts/test-env.sh up                      # build the working tree as it is
+scripts/test-env.sh up --branch dev         # build a branch, tag or commit
+scripts/test-env.sh up --branch dev --host ssh://user@server --port 3001   # on a remote docker host
+scripts/test-env.sh logs --branch dev       # follow logs
+scripts/test-env.sh down --branch dev       # stop and remove its data
+```
+
+Each branch runs as its own Compose project, so branches can run side by side on different ports. The feeds are listed at `http://<host>:3000/` and the job queues at `http://<host>:3000/admin/queues`. The workers read `src/crawler/config.json` from the branch being built.
+
 ## Adding LinkyRSS to Your Feed Reader 📑
 
 Adding your LinkyRSS feed to your favorite feed reader is easy. Here's how you can do it:
