@@ -1,0 +1,51 @@
+# Full LinkyRSS test stack: redis, the crawler web app and the crawler job workers.
+# Start it with scripts/test-env.sh, which can build any branch locally or on a remote docker host.
+services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: ${LINKYRSS_SRC:-./src}
+      dockerfile: ${LINKYRSS_DOCKERFILE:-../docker/crawler.Dockerfile}
+    image: linkyrss-crawler:${LINKYRSS_TAG:-local}
+    command: ["node", "app.js"]
+    environment:
+      REDIS_URL: redis://redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PORT: "3000"
+    ports:
+      - "${LINKYRSS_PORT:-3000}:3000"
+    volumes:
+      - work:/app/crawler/work
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  jobs:
+    image: linkyrss-crawler:${LINKYRSS_TAG:-local}
+    command: ["node", "jobs.js", "config.json"]
+    environment:
+      REDIS_URL: redis://redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LOG_DEBUG: ${LOG_DEBUG:-}
+    volumes:
+      - work:/app/crawler/work
+    # chromium needs more shared memory than docker's 64MB default
+    shm_size: 1gb
+    depends_on:
+      redis:
+        condition: service_healthy
+      web:
+        condition: service_started
+
+volumes:
+  redis-data:
+  work:
