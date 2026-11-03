@@ -15,10 +15,7 @@ class Crawler {
   }
 
   async crawl() {
-    const args = ['--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'];
-    // chromium cannot use its sandbox when running as root inside docker
-    if (process.env.PUPPETEER_NO_SANDBOX) args.push('--no-sandbox', '--disable-setuid-sandbox');
-    const browser = await puppeteer.launch({headless: 'new', args });
+    const browser = await puppeteer.launch({headless: 'new', args: ['--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3312.0 Safari/537.36"'] });
     const page = await browser.newPage();
     try {
 
